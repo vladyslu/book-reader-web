@@ -9,3 +9,16 @@ Create a public GitHub repository that contains the files in this `web-reader` f
 GitHub Actions will publish the site to GitHub Pages. Open the Pages URL on iPhone, tap Share, then Add to Home Screen.
 
 Do not upload `.abrbook` files to GitHub. Import book packages locally from Files/iCloud Drive after opening the web app on the phone.
+
+## Hosted books
+
+Optional hosted books live in `books/` and are listed in `books/library.json`. Anything placed there is public through GitHub Pages.
+
+Use the main project scripts:
+
+```powershell
+.\scripts\add-web-reader-book.ps1 -Book ".\exports\your-book.abrbook"
+.\scripts\publish-web-reader-to-github.ps1
+```
+
+Then tap `Refresh` in the iPhone web app and `Save` the online book to local phone storage.

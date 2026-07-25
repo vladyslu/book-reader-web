@@ -2,6 +2,7 @@ import { normalizePath, readZip } from "./zip-reader.js";
 
 const DB_NAME = "book-reader-web";
 const DB_VERSION = 1;
+const CATALOG_URL = "books/library.json";
 const SETTINGS_KEY = "book-reader-settings";
 const STATE_KEY_PREFIX = "book-reader-state:";
 const BOOKMARK_KEY_PREFIX = "book-reader-bookmarks:";
@@ -10,6 +11,7 @@ const textDecoder = new TextDecoder();
 const state = {
   db: null,
   books: [],
+  catalogBooks: [],
   currentBook: null,
   currentManifest: null,
   currentPageNumber: 1,
@@ -23,7 +25,9 @@ const state = {
 const els = {
   statusText: document.getElementById("statusText"),
   packageInput: document.getElementById("packageInput"),
+  refreshCatalogButton: document.getElementById("refreshCatalogButton"),
   libraryList: document.getElementById("libraryList"),
+  catalogList: document.getElementById("catalogList"),
   deleteBookButton: document.getElementById("deleteBookButton"),
   emptyState: document.getElementById("emptyState"),
   pageView: document.getElementById("pageView"),
@@ -66,12 +70,14 @@ async function init() {
   bindEvents();
   els.showImagesToggle.checked = state.settings.showImages;
   await refreshLibrary();
+  await refreshCatalog();
   setReaderEnabled(false);
-  setStatus(state.books.length ? "Ready" : "Import an .abrbook package.");
+  setStatus(state.books.length || state.catalogBooks.length ? "Ready" : "Import an .abrbook package.");
 }
 
 function bindEvents() {
   els.packageInput.addEventListener("change", onPackageSelected);
+  els.refreshCatalogButton.addEventListener("click", refreshCatalog);
   els.deleteBookButton.addEventListener("click", deleteCurrentBook);
   els.previousPageButton.addEventListener("click", () => movePage(-1));
   els.nextPageButton.addEventListener("click", () => movePage(1));
@@ -130,6 +136,7 @@ async function onPackageSelected(event) {
 async function refreshLibrary() {
   state.books = await getAllBooks();
   renderLibrary();
+  renderCatalog();
 }
 
 function renderLibrary() {
@@ -152,6 +159,94 @@ function renderLibrary() {
     `;
     button.addEventListener("click", () => openBook(book.id));
     els.libraryList.append(button);
+  }
+}
+
+async function refreshCatalog() {
+  try {
+    const response = await fetch(`${CATALOG_URL}?t=${Date.now()}`, { cache: "no-store" });
+    if (response.status === 404) {
+      state.catalogBooks = [];
+      renderCatalog();
+      return;
+    }
+
+    if (!response.ok) {
+      throw new Error(`Online catalog failed: ${response.status}`);
+    }
+
+    const catalog = await response.json();
+    state.catalogBooks = Array.isArray(catalog.books) ? catalog.books : [];
+    renderCatalog();
+  } catch (error) {
+    console.warn(error);
+    state.catalogBooks = [];
+    renderCatalog();
+  }
+}
+
+function renderCatalog() {
+  els.catalogList.replaceChildren();
+  if (state.catalogBooks.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "book-meta";
+    empty.textContent = "No online books.";
+    els.catalogList.append(empty);
+    return;
+  }
+
+  const savedIds = new Set(state.books.map(book => book.id));
+  for (const book of state.catalogBooks) {
+    const row = document.createElement("div");
+    row.className = "catalog-item";
+
+    const detail = document.createElement("div");
+    detail.className = "catalog-detail";
+    detail.innerHTML = `
+      <span class="book-title">${escapeHtml(book.title || "Untitled Book")}</span>
+      <span class="book-meta">${book.pageCount || 0} pages${book.sizeBytes ? ` - ${formatBytes(book.sizeBytes)}` : ""}</span>
+    `;
+
+    const action = document.createElement("button");
+    action.type = "button";
+    const saved = savedIds.has(book.id);
+    action.textContent = saved ? "Open" : "Save";
+    action.className = saved ? "ghost-button" : "primary-button";
+    action.addEventListener("click", () => saved ? openBook(book.id) : saveCatalogBook(book));
+
+    row.append(detail, action);
+    els.catalogList.append(row);
+  }
+}
+
+async function saveCatalogBook(catalogBook) {
+  if (!catalogBook?.file) {
+    setStatus("Online book is missing its file URL.");
+    return;
+  }
+
+  try {
+    setStatus(`Saving ${catalogBook.title || "book"}...`);
+    const response = await fetch(catalogBook.file, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`Download failed: ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    const fileName = catalogBook.file.split("/").pop() || `${catalogBook.id || "book"}.abrbook`;
+    const archive = await readZip(new File([blob], fileName));
+    const manifest = await readJsonEntry(archive, "manifest.json");
+    validateManifest(manifest);
+    await storeBook({ name: fileName }, manifest, archive, {
+      source: "catalog",
+      sourceUrl: new URL(catalogBook.file, location.href).href
+    });
+    await refreshLibrary();
+    await openBook(manifest.id);
+    setStatus(`Saved ${manifest.title}.`);
+  } catch (error) {
+    console.error(error);
+    setStatus(error.message || "Could not save online book.");
   }
 }
 
@@ -408,13 +503,15 @@ function readLocalJson(key, fallback) {
   }
 }
 
-async function storeBook(sourceFile, manifest, archive) {
+async function storeBook(sourceFile, manifest, archive, options = {}) {
   const book = {
     id: manifest.id,
     title: manifest.title || sourceFile.name,
     author: manifest.author || "",
     pageCount: manifest.pageCount || manifest.pages?.length || 0,
     sourceName: sourceFile.name,
+    source: options.source || "file",
+    sourceUrl: options.sourceUrl || "",
     importedAtUtc: new Date().toISOString(),
     manifest
   };
@@ -499,6 +596,13 @@ function clearReader() {
   els.emptyState.hidden = false;
   setReaderEnabled(false);
   renderLibrary();
+}
+
+function formatBytes(bytes) {
+  const value = Number(bytes) || 0;
+  if (value >= 1024 * 1024) return `${(value / 1024 / 1024).toFixed(1)} MB`;
+  if (value >= 1024) return `${Math.round(value / 1024)} KB`;
+  return `${value} B`;
 }
 
 function openDb() {

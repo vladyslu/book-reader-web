@@ -24,6 +24,7 @@
         <span>Import</span>
         <input id="packageInput" type="file" accept=".abrbook,application/zip,application/x-zip-compressed">
       </label>
+      <button id="refreshCatalogButton" type="button">Refresh</button>
     </header>
 
     <main class="reader-layout">
@@ -33,6 +34,10 @@
           <button id="deleteBookButton" class="ghost-button" type="button" disabled>Delete</button>
         </div>
         <div id="libraryList" class="library-list"></div>
+        <div class="panel-heading online-heading">
+          <h2>Online</h2>
+        </div>
+        <div id="catalogList" class="library-list catalog-list"></div>
       </aside>
 
       <section class="reader-panel" aria-label="Reader">
