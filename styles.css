@@ -594,7 +594,7 @@ dialog header {
 @media (max-width: 760px) {
   .reader-layout {
     grid-template-columns: 1fr;
-    grid-template-rows: 150px minmax(0, 1fr);
+    grid-template-rows: minmax(260px, 36dvh) minmax(0, 1fr);
     gap: 8px;
     padding: 8px;
   }
@@ -619,7 +619,7 @@ dialog header {
   }
 
   .library-panel {
-    min-height: 0;
+    min-height: 260px;
   }
 
   .page-view {
@@ -663,7 +663,23 @@ dialog header {
   }
 
   .library-panel {
-    grid-template-rows: auto minmax(42px, 1fr) auto minmax(42px, 1fr);
+    grid-template-rows: auto minmax(112px, 1.35fr) auto minmax(64px, 0.75fr);
+  }
+
+  .library-panel .online-heading {
+    grid-row: 1;
+  }
+
+  .library-panel .catalog-list {
+    grid-row: 2;
+  }
+
+  .library-panel .panel-heading:not(.online-heading) {
+    grid-row: 3;
+  }
+
+  .library-panel .library-list:not(.catalog-list) {
+    grid-row: 4;
   }
 
   .bookmark-actions {
