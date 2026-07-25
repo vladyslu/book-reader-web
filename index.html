@@ -37,7 +37,13 @@
         <div id="libraryList" class="library-list"></div>
         <div class="panel-heading online-heading">
           <h2>Home Library</h2>
-          <button id="saveHomeBooksButton" class="primary-button" type="button" disabled>Save</button>
+          <div class="heading-actions">
+            <label class="ghost-button home-upload-button">
+              <span>Add</span>
+              <input id="homeLibraryInput" type="file" accept=".abrbook,application/zip,application/x-zip-compressed">
+            </label>
+            <button id="saveHomeBooksButton" class="primary-button" type="button" disabled>Save</button>
+          </div>
         </div>
         <div id="catalogList" class="library-list catalog-list"></div>
       </aside>

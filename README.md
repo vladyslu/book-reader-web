@@ -26,7 +26,6 @@ On the PC:
 
 ```powershell
 cd "C:\Users\vlady\Documents\Book Reader"
-.\scripts\add-web-reader-book.ps1 -Book ".\exports\your-book.abrbook"
 .\scripts\start-home-library.ps1
 ```
 
@@ -36,7 +35,9 @@ The server prints one or more iPhone URLs like:
 http://192.168.1.90:8765
 ```
 
-On the iPhone, open the installed Book Reader and tap `Refresh`. The app defaults to `http://192.168.1.90:8765`. Tap `Home PC` only if your PC address changes. Tap `Save` beside a Home Library book. After saving, it appears under `Saved Books` and works offline.
+Open `http://192.168.1.90:8765` on the PC. In the `Home Library` header, click `Add` and choose an `.abrbook` file.
+
+On the iPhone, open the installed Book Reader and tap `Refresh`. Tap `Save` in the `Home Library` header, or tap `Save` beside a single book. After saving, it appears under `Saved Books` and works offline.
 
 If the GitHub app cannot fetch the PC URL because of iOS browser limits, open `http://192.168.1.90:8765` directly on the iPhone while home and use the same `Save` button there. Private books still stay off GitHub.
 

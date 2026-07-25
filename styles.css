@@ -37,7 +37,8 @@ select {
 }
 
 button,
-.import-button {
+.import-button,
+.home-upload-button {
   min-height: 42px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -70,14 +71,16 @@ button:disabled {
   padding: 0;
 }
 
-.import-button {
+.import-button,
+.home-upload-button {
   display: inline-grid;
   place-items: center;
   position: relative;
   overflow: hidden;
 }
 
-.import-button input {
+.import-button input,
+.home-upload-button input {
   position: absolute;
   inset: 0;
   opacity: 0;
@@ -183,6 +186,12 @@ dialog h2 {
 
 .panel-heading h2 {
   font-size: 17px;
+}
+
+.heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .library-list {
@@ -639,6 +648,17 @@ dialog header {
     font-size: 12px;
   }
 
+  .heading-actions {
+    gap: 4px;
+  }
+
+  .heading-actions button,
+  .heading-actions .home-upload-button {
+    min-height: 26px;
+    padding: 3px 7px;
+    font-size: 11px;
+  }
+
   .library-list {
     gap: 5px;
     padding: 5px;
@@ -788,7 +808,8 @@ dialog header {
   }
 
   button,
-  .import-button {
+  .import-button,
+  .home-upload-button {
     min-width: 0;
     min-height: 32px;
     padding: 5px 7px;

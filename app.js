@@ -51,6 +51,7 @@ const els = {
   packageInput: document.getElementById("packageInput"),
   refreshCatalogButton: document.getElementById("refreshCatalogButton"),
   homeServerButton: document.getElementById("homeServerButton"),
+  homeLibraryInput: document.getElementById("homeLibraryInput"),
   saveHomeBooksButton: document.getElementById("saveHomeBooksButton"),
   libraryList: document.getElementById("libraryList"),
   catalogList: document.getElementById("catalogList"),
@@ -124,6 +125,7 @@ function bindEvents() {
   els.homeServerButton.addEventListener("click", showHomeServerDialog);
   els.homeServerCloseButton.addEventListener("click", () => els.homeServerDialog.close());
   els.clearHomeServerButton.addEventListener("click", clearHomeServer);
+  els.homeLibraryInput.addEventListener("change", uploadHomeLibraryBook);
   els.saveHomeBooksButton.addEventListener("click", saveUnsavedHomeBooks);
   els.packageInput.addEventListener("change", onPackageSelected);
   els.refreshCatalogButton.addEventListener("click", refreshCatalog);
@@ -274,10 +276,11 @@ function homeLibraryBookUrl(book) {
   }
 }
 
-async function fetchHomeLibrary(url) {
+async function fetchHomeLibrary(url, init = {}) {
   const options = {
     cache: "no-store",
-    mode: "cors"
+    mode: "cors",
+    ...init
   };
   if (url.startsWith("http://")) {
     options.targetAddressSpace = "local";
@@ -457,6 +460,45 @@ async function saveCatalogBook(catalogBook) {
   }
 }
 
+async function uploadHomeLibraryBook(event) {
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  if (!file) return;
+
+  try {
+    setStatus(`Adding ${file.name} to Home Library...`);
+    const archive = await readZip(file);
+    const manifest = await readJsonEntry(archive, "manifest.json");
+    validateManifest(manifest);
+
+    const uploadUrl = new URL("api/books", `${currentHomeServerUrl()}/`).href;
+    const metadata = encodeBase64Json({
+      id: manifest.id,
+      title: manifest.title || file.name.replace(/\.abrbook$/i, ""),
+      author: manifest.author || "",
+      pageCount: manifest.pageCount || manifest.pages?.length || 0
+    });
+    const response = await fetchHomeLibrary(uploadUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/octet-stream",
+        "X-Book-Metadata": metadata,
+        "X-Book-File-Name": encodeURIComponent(file.name)
+      },
+      body: file
+    });
+    if (!response.ok) {
+      throw new Error(`Home Library add failed: ${response.status}`);
+    }
+
+    await refreshCatalog();
+    setStatus(`Added ${manifest.title || file.name} to Home Library.`);
+  } catch (error) {
+    console.error(error);
+    setStatus(error.message || `Could not add ${file.name} to Home Library.`);
+  }
+}
+
 async function saveUnsavedHomeBooks() {
   const savedIds = new Set(state.books.map(book => book.id));
   const unsaved = state.catalogBooks.filter(book => !savedIds.has(book.id));
@@ -481,6 +523,15 @@ function updateSaveHomeBooksButton() {
   const unsavedCount = state.catalogBooks.filter(book => !savedIds.has(book.id)).length;
   els.saveHomeBooksButton.disabled = unsavedCount === 0;
   els.saveHomeBooksButton.textContent = unsavedCount > 1 ? "Save All" : "Save";
+}
+
+function encodeBase64Json(value) {
+  const bytes = new TextEncoder().encode(JSON.stringify(value));
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary);
 }
 
 async function openBook(bookId) {

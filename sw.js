@@ -1,4 +1,4 @@
-const CACHE_NAME = "book-reader-web-v12";
+const CACHE_NAME = "book-reader-web-v13";
 const APP_SHELL = [
   "./",
   "./index.html",
