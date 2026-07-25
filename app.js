@@ -1,15 +1,15 @@
+import { CLOUD_CONFIG } from "./cloud-config.js";
 import { normalizePath, readZip } from "./zip-reader.js";
 
 const DB_NAME = "book-reader-web";
 const DB_VERSION = 1;
 const CATALOG_URL = "books/library.json";
 const SETTINGS_KEY = "book-reader-settings";
-const AUTH_KEY = "book-reader-auth";
-const AUTH_REMEMBER_KEY = "book-reader-auth-remembered";
-const AUTH_SESSION_KEY = "book-reader-auth-session";
+const CLOUD_STAY_KEY = "book-reader-cloud-stay";
 const STATE_KEY_PREFIX = "book-reader-state:";
 const BOOKMARK_KEY_PREFIX = "book-reader-bookmarks:";
 const DICTIONARY_API_URL = "https://api.dictionaryapi.dev/api/v2/entries/en/";
+const SUPABASE_MODULE_URL = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 const SPEAKER_COLORS = [
   "#d7263d",
   "#0077b6",
@@ -40,6 +40,11 @@ const state = {
   currentWordIndex: -1,
   currentSentenceId: "",
   definitionWordIndex: -1,
+  cloudClient: null,
+  cloudUser: null,
+  cloudReady: false,
+  cloudStatus: "",
+  cloudAuthSubscription: null,
   saveTimer: null,
   settings: loadSettings()
 };
@@ -48,7 +53,7 @@ const els = {
   statusText: document.getElementById("statusText"),
   packageInput: document.getElementById("packageInput"),
   refreshCatalogButton: document.getElementById("refreshCatalogButton"),
-  lockButton: document.getElementById("lockButton"),
+  accountButton: document.getElementById("accountButton"),
   libraryList: document.getElementById("libraryList"),
   catalogList: document.getElementById("catalogList"),
   deleteBookButton: document.getElementById("deleteBookButton"),
@@ -71,16 +76,17 @@ const els = {
   bookmarkButton: document.getElementById("bookmarkButton"),
   bookmarksButton: document.getElementById("bookmarksButton"),
   showImagesToggle: document.getElementById("showImagesToggle"),
-  authOverlay: document.getElementById("authOverlay"),
-  authForm: document.getElementById("authForm"),
-  authTitle: document.getElementById("authTitle"),
-  authMessage: document.getElementById("authMessage"),
-  authPasscode: document.getElementById("authPasscode"),
-  authConfirmRow: document.getElementById("authConfirmRow"),
-  authPasscodeConfirm: document.getElementById("authPasscodeConfirm"),
+  accountDialog: document.getElementById("accountDialog"),
+  accountForm: document.getElementById("accountForm"),
+  accountTitle: document.getElementById("accountTitle"),
+  accountMessage: document.getElementById("accountMessage"),
+  accountEmail: document.getElementById("accountEmail"),
+  accountPassword: document.getElementById("accountPassword"),
+  accountCloseButton: document.getElementById("accountCloseButton"),
   stayLoggedInToggle: document.getElementById("stayLoggedInToggle"),
-  authSubmitButton: document.getElementById("authSubmitButton"),
-  resetLockButton: document.getElementById("resetLockButton"),
+  signInButton: document.getElementById("signInButton"),
+  createAccountButton: document.getElementById("createAccountButton"),
+  signOutButton: document.getElementById("signOutButton"),
   bookmarkDialog: document.getElementById("bookmarkDialog"),
   bookmarkList: document.getElementById("bookmarkList"),
   definitionDialog: document.getElementById("definitionDialog"),
@@ -108,8 +114,9 @@ async function init() {
   state.db = await openDb();
   await registerServiceWorker();
   bindEvents();
-  await initializeAuth();
+  await initializeCloud();
   els.showImagesToggle.checked = state.settings.showImages;
+  els.stayLoggedInToggle.checked = loadCloudStayPreference();
   await refreshLibrary();
   await refreshCatalog();
   setReaderEnabled(false);
@@ -117,9 +124,11 @@ async function init() {
 }
 
 function bindEvents() {
-  els.authForm.addEventListener("submit", onAuthSubmit);
-  els.resetLockButton.addEventListener("click", resetDeviceLock);
-  els.lockButton.addEventListener("click", lockApp);
+  els.accountForm.addEventListener("submit", onAccountSignIn);
+  els.accountButton.addEventListener("click", showAccountDialog);
+  els.accountCloseButton.addEventListener("click", () => els.accountDialog.close());
+  els.createAccountButton.addEventListener("click", createAccount);
+  els.signOutButton.addEventListener("click", signOut);
   els.packageInput.addEventListener("change", onPackageSelected);
   els.refreshCatalogButton.addEventListener("click", refreshCatalog);
   els.deleteBookButton.addEventListener("click", deleteCurrentBook);
@@ -173,121 +182,151 @@ function bindEvents() {
   window.addEventListener("beforeunload", saveReadingState);
 }
 
-async function initializeAuth() {
-  const auth = loadAuth();
-  els.stayLoggedInToggle.checked = localStorage.getItem(AUTH_REMEMBER_KEY) === "true";
-  if (!auth?.passwordHash || !auth?.salt) {
-    showAuthOverlay("create");
+async function initializeCloud() {
+  els.stayLoggedInToggle.checked = loadCloudStayPreference();
+  if (!cloudConfigured()) {
+    state.cloudStatus = "Cloud sync is not configured.";
+    renderAccountState();
     return;
   }
 
-  if (localStorage.getItem(AUTH_REMEMBER_KEY) === "true" || sessionStorage.getItem(AUTH_SESSION_KEY) === "true") {
-    hideAuthOverlay();
-    return;
+  try {
+    await ensureCloudClient();
+    const { data, error } = await state.cloudClient.auth.getSession();
+    if (error) throw error;
+    state.cloudUser = data.session?.user || null;
+    state.cloudStatus = state.cloudUser ? `Signed in as ${state.cloudUser.email}.` : "Sign in to sync books.";
+  } catch (error) {
+    console.warn(error);
+    state.cloudStatus = "Cloud sync could not start.";
   }
 
-  showAuthOverlay("unlock");
+  renderAccountState();
 }
 
-function showAuthOverlay(mode, message = "") {
-  els.authOverlay.hidden = false;
-  els.authForm.dataset.mode = mode;
-  const creating = mode === "create";
-  els.authTitle.textContent = creating ? "Create App Lock" : "Unlock Book Reader";
-  els.authMessage.textContent = message || (creating
-    ? "Choose a passcode for this device."
-    : "Enter your passcode.");
-  els.authConfirmRow.hidden = !creating;
-  els.authPasscode.autocomplete = creating ? "new-password" : "current-password";
-  els.authPasscode.value = "";
-  els.authPasscodeConfirm.value = "";
-  els.authPasscodeConfirm.required = creating;
-  els.authSubmitButton.textContent = creating ? "Create Lock" : "Unlock";
-  setTimeout(() => els.authPasscode.focus(), 50);
-}
+async function ensureCloudClient() {
+  if (state.cloudClient) return state.cloudClient;
+  if (!cloudConfigured()) throw new Error("Cloud sync is not configured.");
 
-function hideAuthOverlay() {
-  els.authOverlay.hidden = true;
-}
-
-async function onAuthSubmit(event) {
-  event.preventDefault();
-  const mode = els.authForm.dataset.mode || "unlock";
-  const passcode = els.authPasscode.value;
-  if (passcode.length < 4) {
-    showAuthOverlay(mode, "Use at least 4 characters.");
-    return;
-  }
-
-  if (mode === "create") {
-    if (passcode !== els.authPasscodeConfirm.value) {
-      showAuthOverlay("create", "Passcodes do not match.");
-      return;
+  const { createClient } = await import(SUPABASE_MODULE_URL);
+  state.cloudClient = createClient(CLOUD_CONFIG.supabaseUrl, CLOUD_CONFIG.supabaseAnonKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      storage: loadCloudStayPreference() ? localStorage : sessionStorage
     }
-
-    const salt = crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
-    const passwordHash = await hashPasscode(passcode, salt);
-    localStorage.setItem(AUTH_KEY, JSON.stringify({ salt, passwordHash, createdAtUtc: new Date().toISOString() }));
-    rememberUnlock();
-    hideAuthOverlay();
-    setStatus("App lock created.");
-    return;
-  }
-
-  const auth = loadAuth();
-  if (!auth?.salt || !auth?.passwordHash) {
-    showAuthOverlay("create");
-    return;
-  }
-
-  const passwordHash = await hashPasscode(passcode, auth.salt);
-  if (passwordHash !== auth.passwordHash) {
-    showAuthOverlay("unlock", "Wrong passcode.");
-    return;
-  }
-
-  rememberUnlock();
-  hideAuthOverlay();
-  setStatus("Unlocked.");
+  });
+  state.cloudReady = true;
+  state.cloudAuthSubscription = state.cloudClient.auth.onAuthStateChange((_event, session) => {
+    state.cloudUser = session?.user || null;
+    state.cloudStatus = state.cloudUser ? `Signed in as ${state.cloudUser.email}.` : "Signed out.";
+    renderAccountState();
+    refreshCatalog();
+  });
+  return state.cloudClient;
 }
 
-function rememberUnlock() {
-  if (els.stayLoggedInToggle.checked) {
-    localStorage.setItem(AUTH_REMEMBER_KEY, "true");
-    sessionStorage.removeItem(AUTH_SESSION_KEY);
+function cloudConfigured() {
+  return Boolean(CLOUD_CONFIG.enabled && CLOUD_CONFIG.supabaseUrl && CLOUD_CONFIG.supabaseAnonKey);
+}
+
+function loadCloudStayPreference() {
+  return localStorage.getItem(CLOUD_STAY_KEY) !== "false";
+}
+
+function saveCloudStayPreference() {
+  localStorage.setItem(CLOUD_STAY_KEY, els.stayLoggedInToggle.checked ? "true" : "false");
+}
+
+function showAccountDialog() {
+  renderAccountState();
+  if (!els.accountDialog.open && typeof els.accountDialog.showModal === "function") {
+    els.accountDialog.showModal();
   } else {
-    localStorage.removeItem(AUTH_REMEMBER_KEY);
-    sessionStorage.setItem(AUTH_SESSION_KEY, "true");
+    els.accountDialog.open = true;
   }
+  setTimeout(() => els.accountEmail.focus(), 50);
 }
 
-function lockApp() {
-  localStorage.removeItem(AUTH_REMEMBER_KEY);
-  sessionStorage.removeItem(AUTH_SESSION_KEY);
-  els.audio.pause();
-  showAuthOverlay(loadAuth() ? "unlock" : "create");
-  setStatus("Locked.");
-}
-
-function resetDeviceLock() {
-  if (!confirm("Reset the app lock on this device? Local saved books will stay on this device.")) {
+async function onAccountSignIn(event) {
+  event.preventDefault();
+  saveCloudStayPreference();
+  if (!cloudConfigured()) {
+    setAccountMessage("Cloud sync needs Supabase config first.");
     return;
   }
 
-  localStorage.removeItem(AUTH_KEY);
-  localStorage.removeItem(AUTH_REMEMBER_KEY);
-  sessionStorage.removeItem(AUTH_SESSION_KEY);
-  showAuthOverlay("create", "Create a new passcode.");
+  try {
+    await ensureCloudClient();
+    const { error } = await state.cloudClient.auth.signInWithPassword({
+      email: els.accountEmail.value.trim(),
+      password: els.accountPassword.value
+    });
+    if (error) throw error;
+    els.accountPassword.value = "";
+    els.accountDialog.close();
+    await refreshCatalog();
+    setStatus("Signed in. Cloud books refreshed.");
+  } catch (error) {
+    console.error(error);
+    setAccountMessage(error.message || "Sign in failed.");
+  }
 }
 
-function loadAuth() {
-  return readLocalJson(AUTH_KEY, null);
+async function createAccount() {
+  saveCloudStayPreference();
+  if (!cloudConfigured()) {
+    setAccountMessage("Cloud sync needs Supabase config first.");
+    return;
+  }
+
+  try {
+    await ensureCloudClient();
+    const { error } = await state.cloudClient.auth.signUp({
+      email: els.accountEmail.value.trim(),
+      password: els.accountPassword.value
+    });
+    if (error) throw error;
+    els.accountPassword.value = "";
+    setAccountMessage("Account created. Check your email if confirmation is enabled, then sign in.");
+  } catch (error) {
+    console.error(error);
+    setAccountMessage(error.message || "Account creation failed.");
+  }
 }
 
-async function hashPasscode(passcode, salt) {
-  const data = new TextEncoder().encode(`${salt}:${passcode}`);
-  const hash = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, "0")).join("");
+async function signOut() {
+  if (!state.cloudClient) return;
+  await state.cloudClient.auth.signOut();
+  state.cloudUser = null;
+  state.catalogBooks = [];
+  renderCatalog();
+  renderAccountState();
+  setStatus("Signed out.");
+}
+
+function renderAccountState() {
+  const signedIn = Boolean(state.cloudUser);
+  els.accountButton.textContent = signedIn ? state.cloudUser.email : "Sign In";
+  els.accountTitle.textContent = signedIn ? "Account" : "Sign In";
+  els.accountMessage.textContent = state.cloudStatus || (cloudConfigured()
+    ? "Use the same account on PC and iPhone."
+    : "Cloud sync needs Supabase config first.");
+  els.accountEmail.disabled = signedIn;
+  els.accountPassword.disabled = signedIn;
+  els.signInButton.hidden = signedIn;
+  els.createAccountButton.hidden = signedIn;
+  els.signOutButton.hidden = !signedIn;
+  if (signedIn) {
+    els.accountEmail.value = state.cloudUser.email || "";
+    els.accountPassword.value = "";
+  }
+}
+
+function setAccountMessage(message) {
+  state.cloudStatus = message;
+  els.accountMessage.textContent = message;
 }
 
 async function onPackageSelected(event) {
@@ -302,9 +341,24 @@ async function onPackageSelected(event) {
     const manifest = await readJsonEntry(archive, "manifest.json");
     validateManifest(manifest);
     await storeBook(file, manifest, archive);
+    let synced = false;
+    if (state.cloudUser) {
+      try {
+        await uploadBookToCloud(file, manifest);
+        synced = true;
+      } catch (syncError) {
+        console.error(syncError);
+        setStatus(`Imported ${manifest.title}, but cloud sync failed.`);
+      }
+    }
     await refreshLibrary();
+    await refreshCatalog();
     await openBook(manifest.id);
-    setStatus(`Imported ${manifest.title}.`);
+    setStatus(synced
+      ? `Imported and synced ${manifest.title}.`
+      : state.cloudUser
+        ? `Imported ${manifest.title}, but cloud sync failed.`
+        : `Imported ${manifest.title}. Sign in to sync it.`);
   } catch (error) {
     console.error(error);
     setStatus(error.message || "Import failed.");
@@ -341,6 +395,11 @@ function renderLibrary() {
 }
 
 async function refreshCatalog() {
+  if (cloudConfigured()) {
+    await refreshCloudBooks();
+    return;
+  }
+
   try {
     const response = await fetch(`${CATALOG_URL}?t=${Date.now()}`, { cache: "no-store" });
     if (response.status === 404) {
@@ -363,12 +422,62 @@ async function refreshCatalog() {
   }
 }
 
+async function refreshCloudBooks() {
+  if (!state.cloudUser) {
+    state.catalogBooks = [];
+    renderCatalog();
+    return;
+  }
+
+  try {
+    await ensureCloudClient();
+    const { data, error } = await state.cloudClient
+      .from("book_files")
+      .select("book_id,title,author,page_count,file_path,size_bytes,updated_at")
+      .order("updated_at", { ascending: false });
+    if (error) throw error;
+
+    state.catalogBooks = (data || []).map(row => ({
+      id: row.book_id,
+      title: row.title,
+      author: row.author || "",
+      pageCount: row.page_count || 0,
+      sizeBytes: row.size_bytes || 0,
+      filePath: row.file_path,
+      updatedAtUtc: row.updated_at,
+      source: "cloud"
+    }));
+    renderCatalog();
+  } catch (error) {
+    console.error(error);
+    state.catalogBooks = [];
+    renderCatalog();
+    setStatus(error.message || "Cloud refresh failed.");
+  }
+}
+
 function renderCatalog() {
   els.catalogList.replaceChildren();
+  if (cloudConfigured() && !state.cloudUser) {
+    const empty = document.createElement("p");
+    empty.className = "book-meta";
+    empty.textContent = "Sign in to see cloud books.";
+    els.catalogList.append(empty);
+    return;
+  }
+
+  if (!cloudConfigured() && state.catalogBooks.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "book-meta";
+    empty.textContent = "Cloud sync is not configured.";
+    els.catalogList.append(empty);
+    return;
+  }
+
   if (state.catalogBooks.length === 0) {
     const empty = document.createElement("p");
     empty.className = "book-meta";
-    empty.textContent = "No online books.";
+    empty.textContent = cloudConfigured() ? "No cloud books yet." : "No online books.";
     els.catalogList.append(empty);
     return;
   }
@@ -392,12 +501,30 @@ function renderCatalog() {
     action.className = saved ? "ghost-button" : "primary-button";
     action.addEventListener("click", () => saved ? openBook(book.id) : saveCatalogBook(book));
 
-    row.append(detail, action);
+    const actions = document.createElement("div");
+    actions.className = "catalog-actions";
+    actions.append(action);
+
+    if (book.source === "cloud") {
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.textContent = "Remove";
+      remove.className = "ghost-button";
+      remove.addEventListener("click", () => removeCloudBook(book));
+      actions.append(remove);
+    }
+
+    row.append(detail, actions);
     els.catalogList.append(row);
   }
 }
 
 async function saveCatalogBook(catalogBook) {
+  if (catalogBook?.source === "cloud") {
+    await saveCloudBook(catalogBook);
+    return;
+  }
+
   if (!catalogBook?.file) {
     setStatus("Online book is missing its file URL.");
     return;
@@ -425,6 +552,103 @@ async function saveCatalogBook(catalogBook) {
   } catch (error) {
     console.error(error);
     setStatus(error.message || "Could not save online book.");
+  }
+}
+
+async function uploadBookToCloud(file, manifest) {
+  if (!state.cloudUser) return;
+  await ensureCloudClient();
+  const bucket = CLOUD_CONFIG.storageBucket || "abrbooks";
+  const filePath = `${state.cloudUser.id}/${manifest.id}.abrbook`;
+  setStatus(`Uploading ${manifest.title || file.name} to cloud...`);
+
+  const { error: uploadError } = await state.cloudClient.storage
+    .from(bucket)
+    .upload(filePath, file, {
+      upsert: true,
+      contentType: "application/octet-stream"
+    });
+  if (uploadError) throw uploadError;
+
+  const row = {
+    user_id: state.cloudUser.id,
+    book_id: manifest.id,
+    title: manifest.title || file.name,
+    author: manifest.author || "",
+    page_count: manifest.pageCount || manifest.pages?.length || 0,
+    file_path: filePath,
+    size_bytes: file.size || 0,
+    updated_at: new Date().toISOString()
+  };
+  const { error: metadataError } = await state.cloudClient
+    .from("book_files")
+    .upsert(row, { onConflict: "user_id,book_id" });
+  if (metadataError) throw metadataError;
+}
+
+async function saveCloudBook(cloudBook) {
+  if (!state.cloudUser) {
+    showAccountDialog();
+    return;
+  }
+
+  try {
+    await ensureCloudClient();
+    setStatus(`Saving ${cloudBook.title || "book"} to this device...`);
+    const { data, error } = await state.cloudClient.storage
+      .from(CLOUD_CONFIG.storageBucket || "abrbooks")
+      .download(cloudBook.filePath);
+    if (error) throw error;
+
+    const fileName = `${cloudBook.id || "book"}.abrbook`;
+    const file = new File([data], fileName, { type: "application/octet-stream" });
+    const archive = await readZip(file);
+    const manifest = await readJsonEntry(archive, "manifest.json");
+    validateManifest(manifest);
+    await storeBook(file, manifest, archive, {
+      source: "cloud",
+      sourceUrl: cloudBook.filePath
+    });
+    await refreshLibrary();
+    await openBook(manifest.id);
+    setStatus(`Saved ${manifest.title} to this device.`);
+  } catch (error) {
+    console.error(error);
+    setStatus(error.message || "Could not save cloud book.");
+  }
+}
+
+async function removeCloudBook(cloudBook, options = {}) {
+  if (!state.cloudUser || !cloudBook?.id) return;
+  if (options.confirmFirst !== false && !confirm(`Remove ${cloudBook.title || "this book"} from your cloud account?`)) return;
+
+  try {
+    await ensureCloudClient();
+    setStatus(`Removing ${cloudBook.title || "book"} from cloud...`);
+    const bucket = CLOUD_CONFIG.storageBucket || "abrbooks";
+    if (cloudBook.filePath) {
+      const { error: storageError } = await state.cloudClient.storage.from(bucket).remove([cloudBook.filePath]);
+      if (storageError) throw storageError;
+    }
+    const { error: rowError } = await state.cloudClient
+      .from("book_files")
+      .delete()
+      .eq("book_id", cloudBook.id)
+      .eq("user_id", state.cloudUser.id);
+    if (rowError) throw rowError;
+
+    if (state.books.some(book => book.id === cloudBook.id)) {
+      await deleteBookFromDevice(cloudBook.id);
+      if (state.currentBook?.id === cloudBook.id) {
+        clearReader();
+      }
+      await refreshLibrary();
+    }
+    await refreshCatalog();
+    setStatus("Removed from cloud.");
+  } catch (error) {
+    console.error(error);
+    setStatus(error.message || "Could not remove cloud book.");
   }
 }
 
@@ -864,6 +1088,20 @@ async function deleteCurrentBook() {
   if (!state.currentBook) return;
   if (!confirm(`Delete ${state.currentBook.title}?`)) return;
   const bookId = state.currentBook.id;
+  if (state.cloudUser && confirm("Also remove this book from your cloud account?")) {
+    const cloudBook = state.catalogBooks.find(book => book.id === bookId);
+    if (cloudBook) {
+      await removeCloudBook(cloudBook, { confirmFirst: false });
+      return;
+    }
+  }
+  await deleteBookFromDevice(bookId);
+  clearReader();
+  await refreshLibrary();
+  setStatus("Book deleted from this device.");
+}
+
+async function deleteBookFromDevice(bookId) {
   const tx = state.db.transaction(["books", "files"], "readwrite");
   await requestToPromise(tx.objectStore("books").delete(bookId));
   const index = tx.objectStore("files").index("bookId");
@@ -884,9 +1122,6 @@ async function deleteCurrentBook() {
   await txDone(tx);
   localStorage.removeItem(`${STATE_KEY_PREFIX}${bookId}`);
   localStorage.removeItem(`${BOOKMARK_KEY_PREFIX}${bookId}`);
-  clearReader();
-  await refreshLibrary();
-  setStatus("Book deleted.");
 }
 
 function clearReader() {

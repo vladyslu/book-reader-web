@@ -25,7 +25,7 @@
         <input id="packageInput" type="file" accept=".abrbook,application/zip,application/x-zip-compressed">
       </label>
       <button id="refreshCatalogButton" type="button">Refresh</button>
-      <button id="lockButton" type="button">Lock</button>
+      <button id="accountButton" type="button">Sign In</button>
     </header>
 
     <main class="reader-layout">
@@ -36,7 +36,7 @@
         </div>
         <div id="libraryList" class="library-list"></div>
         <div class="panel-heading online-heading">
-          <h2>Online</h2>
+          <h2>Cloud</h2>
         </div>
         <div id="catalogList" class="library-list catalog-list"></div>
       </aside>
@@ -89,28 +89,36 @@
   </div>
 
   <audio id="audioPlayer" preload="metadata"></audio>
-  <section id="authOverlay" class="auth-overlay" aria-label="App lock">
-    <form id="authForm" class="auth-panel">
-      <img src="icon.svg" alt="">
-      <h2 id="authTitle">Unlock Book Reader</h2>
-      <p id="authMessage">Enter your passcode.</p>
+  <dialog id="accountDialog" class="account-dialog">
+    <form id="accountForm">
+      <header>
+        <div>
+          <h2 id="accountTitle">Sign In</h2>
+          <p id="accountMessage" class="definition-context">Use the same account on PC and iPhone.</p>
+        </div>
+        <button id="accountCloseButton" type="button" class="icon-button" aria-label="Close">x</button>
+      </header>
+      <div class="account-fields">
       <label>
-        <span>Passcode</span>
-        <input id="authPasscode" type="password" autocomplete="current-password" required minlength="4">
+        <span>Email</span>
+        <input id="accountEmail" type="email" autocomplete="email" required>
       </label>
-      <label id="authConfirmRow">
-        <span>Confirm passcode</span>
-        <input id="authPasscodeConfirm" type="password" autocomplete="new-password" minlength="4">
+      <label>
+        <span>Password</span>
+        <input id="accountPassword" type="password" autocomplete="current-password" required minlength="6">
       </label>
-      <label class="toggle-row auth-remember">
+      <label class="toggle-row account-remember">
         <input id="stayLoggedInToggle" type="checkbox">
-        <span>Stay logged in on this device</span>
+        <span>Stay logged in</span>
       </label>
-      <button id="authSubmitButton" class="primary-button" type="submit">Unlock</button>
-      <button id="resetLockButton" class="ghost-button" type="button">Reset this device lock</button>
-      <p class="auth-note">This protects the app on this device. Public hosted book files still need private hosting for real online privacy.</p>
+      </div>
+      <footer class="account-actions">
+        <button id="signInButton" class="primary-button" type="submit">Sign In</button>
+        <button id="createAccountButton" type="button">Create Account</button>
+        <button id="signOutButton" class="ghost-button" type="button" hidden>Sign Out</button>
+      </footer>
     </form>
-  </section>
+  </dialog>
   <dialog id="bookmarkDialog">
     <form method="dialog">
       <header>
