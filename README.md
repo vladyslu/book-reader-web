@@ -46,4 +46,4 @@ Then tap `Refresh` in the iPhone web app and `Save` the online book to local pho
 
 ## Reader features
 
-The phone reader uses the same `.abrbook` package data as the PC reader. Imported or saved books support page text, audio playback, seeking, bookmarks, image show/hide, sentence highlighting, speaker color highlights with a legend, and tap-word definitions. In the definition panel, use `Move Audio Here` to jump narration to that word.
+The phone reader uses the same `.abrbook` package data as the PC reader. Imported or saved books support page text, audio playback, seeking, bookmarks, image show/hide, reader font choice, sentence highlighting, speaker color highlights with a legend, and tap-word definitions. In the definition panel, use `Move Audio Here` to jump narration to that word.

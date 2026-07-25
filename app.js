@@ -76,6 +76,7 @@ const els = {
   bookmarkButton: document.getElementById("bookmarkButton"),
   bookmarksButton: document.getElementById("bookmarksButton"),
   showImagesToggle: document.getElementById("showImagesToggle"),
+  readerFontSelect: document.getElementById("readerFontSelect"),
   accountDialog: document.getElementById("accountDialog"),
   accountForm: document.getElementById("accountForm"),
   accountTitle: document.getElementById("accountTitle"),
@@ -116,6 +117,8 @@ async function init() {
   bindEvents();
   await initializeCloud();
   els.showImagesToggle.checked = state.settings.showImages;
+  els.readerFontSelect.value = normalizeReaderFont(state.settings.readerFont);
+  applyReaderFont(els.readerFontSelect.value);
   els.stayLoggedInToggle.checked = loadCloudStayPreference();
   await refreshLibrary();
   await refreshCatalog();
@@ -164,6 +167,11 @@ function bindEvents() {
     state.settings.showImages = els.showImagesToggle.checked;
     saveSettings(state.settings);
     await reloadCurrentPage({ keepPlaying: !els.audio.paused, keepTime: els.audio.currentTime });
+  });
+  els.readerFontSelect.addEventListener("change", () => {
+    state.settings.readerFont = normalizeReaderFont(els.readerFontSelect.value);
+    saveSettings(state.settings);
+    applyReaderFont(state.settings.readerFont);
   });
 
   els.audio.addEventListener("timeupdate", () => {
@@ -1014,11 +1022,23 @@ function saveBookmarks(bookId, bookmarks) {
 }
 
 function loadSettings() {
-  return readLocalJson(SETTINGS_KEY, { showImages: true });
+  const settings = readLocalJson(SETTINGS_KEY, { showImages: true, readerFont: "serif" });
+  return {
+    showImages: settings.showImages !== false,
+    readerFont: normalizeReaderFont(settings.readerFont)
+  };
 }
 
 function saveSettings(settings) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
+
+function applyReaderFont(font) {
+  els.textView.dataset.readerFont = normalizeReaderFont(font);
+}
+
+function normalizeReaderFont(font) {
+  return ["serif", "system", "georgia", "palatino", "verdana"].includes(font) ? font : "serif";
 }
 
 function readLocalJson(key, fallback) {
