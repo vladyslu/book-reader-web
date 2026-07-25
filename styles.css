@@ -272,6 +272,57 @@ dialog h2 {
   display: none;
 }
 
+.speaker-panel {
+  max-width: 780px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 auto 18px;
+  padding: 9px;
+  border: 1px solid var(--line);
+  background: #fbfaf6;
+}
+
+.speaker-panel[hidden] {
+  display: none;
+}
+
+.speaker-now,
+.speaker-chip {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.speaker-now {
+  flex-basis: 100%;
+}
+
+.speaker-chip {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  padding: 4px 8px;
+}
+
+.speaker-chip.active {
+  border-color: var(--speaker-color);
+  color: var(--ink);
+  box-shadow: inset 0 -3px 0 var(--speaker-color);
+}
+
+.speaker-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--speaker-color);
+}
+
 .text-view {
   max-width: 780px;
   margin: 0 auto;
@@ -307,15 +358,27 @@ dialog h2 {
 .word {
   border-radius: 4px;
   padding: 0 2px;
+  border-bottom: 2px solid color-mix(in srgb, var(--speaker-color, var(--muted)) 62%, transparent);
+  cursor: pointer;
+  touch-action: manipulation;
 }
 
 .word.read {
-  background: rgba(213, 157, 53, 0.24);
+  background: color-mix(in srgb, var(--speaker-color, var(--gold)) 18%, transparent);
+}
+
+.word.sentence-current {
+  background: color-mix(in srgb, var(--speaker-color, var(--accent)) 24%, transparent);
 }
 
 .word.current {
   background: var(--accent);
   color: white;
+  border-bottom-color: var(--accent-strong);
+}
+
+.word[data-kind="dialogue"] {
+  color: color-mix(in srgb, var(--speaker-color, var(--ink)) 58%, var(--ink));
 }
 
 .player-bar {
@@ -451,6 +514,56 @@ dialog header {
   text-align: left;
 }
 
+.definition-dialog {
+  width: min(520px, calc(100vw - 28px));
+}
+
+.definition-dialog header div {
+  min-width: 0;
+}
+
+.definition-context {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.definition-results {
+  display: grid;
+  gap: 10px;
+  max-height: min(55vh, 430px);
+  overflow: auto;
+  padding: 12px;
+}
+
+.definition-sense {
+  display: grid;
+  gap: 5px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfaf6;
+  padding: 10px;
+}
+
+.definition-sense p,
+.definition-sense q {
+  margin: 0;
+}
+
+.definition-sense q {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.definition-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid var(--line);
+}
+
 @media (max-width: 760px) {
   .reader-layout {
     grid-template-columns: 1fr;
@@ -518,6 +631,17 @@ dialog header {
 
   .playback-actions .primary-button {
     min-height: 48px;
+  }
+
+  .speaker-panel {
+    margin-bottom: 14px;
+  }
+
+  .definition-dialog {
+    width: 100%;
+    max-width: none;
+    margin: auto 0 0;
+    border-radius: 8px 8px 0 0;
   }
 
   button,

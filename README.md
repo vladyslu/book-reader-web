@@ -23,6 +23,10 @@ Use the main project scripts:
 
 Then tap `Refresh` in the iPhone web app and `Save` the online book to local phone storage.
 
+## Reader features
+
+The phone reader uses the same `.abrbook` package data as the PC reader. Imported or saved books support page text, audio playback, seeking, bookmarks, image show/hide, sentence highlighting, speaker color highlights with a legend, and tap-word definitions. In the definition panel, use `Move Audio Here` to jump narration to that word.
+
 ## App lock
 
 The web app has a device app lock with `Stay logged in on this device`. It protects access to the reader UI on that browser/device. It does not protect hosted `.abrbook` files on public GitHub Pages.

@@ -53,6 +53,7 @@
             <span id="pageLabel"></span>
           </div>
           <img id="pageImage" class="page-image" alt="">
+          <section id="speakerLegend" class="speaker-panel" aria-label="Voice legend" hidden></section>
           <section id="textView" class="text-view"></section>
         </article>
       </section>
@@ -117,6 +118,22 @@
         <button value="cancel" class="icon-button" aria-label="Close">x</button>
       </header>
       <div id="bookmarkList" class="bookmark-list"></div>
+    </form>
+  </dialog>
+  <dialog id="definitionDialog" class="definition-dialog">
+    <form method="dialog">
+      <header>
+        <div>
+          <h2 id="definitionWord">Definition</h2>
+          <p id="definitionContext" class="definition-context"></p>
+        </div>
+        <button value="cancel" class="icon-button" aria-label="Close">x</button>
+      </header>
+      <div id="definitionResults" class="definition-results"></div>
+      <footer class="definition-actions">
+        <button id="definitionSeekButton" type="button">Move Audio Here</button>
+        <button id="definitionCopyButton" type="button">Copy Word</button>
+      </footer>
     </form>
   </dialog>
   <script src="app.js" type="module"></script>

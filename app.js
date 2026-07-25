@@ -9,6 +9,23 @@ const AUTH_REMEMBER_KEY = "book-reader-auth-remembered";
 const AUTH_SESSION_KEY = "book-reader-auth-session";
 const STATE_KEY_PREFIX = "book-reader-state:";
 const BOOKMARK_KEY_PREFIX = "book-reader-bookmarks:";
+const DICTIONARY_API_URL = "https://api.dictionaryapi.dev/api/v2/entries/en/";
+const SPEAKER_COLORS = [
+  "#d7263d",
+  "#0077b6",
+  "#2f9e44",
+  "#f76707",
+  "#7b2cbf",
+  "#0ca678",
+  "#c2255c",
+  "#e67700",
+  "#364fc7",
+  "#5c940d",
+  "#ae3ec9",
+  "#087f5b"
+];
+const NARRATOR_COLOR = "#495057";
+const FALLBACK_COLOR = "#868e96";
 
 const textDecoder = new TextDecoder();
 const state = {
@@ -21,6 +38,8 @@ const state = {
   currentPage: null,
   currentUrls: [],
   currentWordIndex: -1,
+  currentSentenceId: "",
+  definitionWordIndex: -1,
   saveTimer: null,
   settings: loadSettings()
 };
@@ -38,6 +57,7 @@ const els = {
   bookTitle: document.getElementById("bookTitle"),
   pageLabel: document.getElementById("pageLabel"),
   pageImage: document.getElementById("pageImage"),
+  speakerLegend: document.getElementById("speakerLegend"),
   textView: document.getElementById("textView"),
   audio: document.getElementById("audioPlayer"),
   previousPageButton: document.getElementById("previousPageButton"),
@@ -62,7 +82,13 @@ const els = {
   authSubmitButton: document.getElementById("authSubmitButton"),
   resetLockButton: document.getElementById("resetLockButton"),
   bookmarkDialog: document.getElementById("bookmarkDialog"),
-  bookmarkList: document.getElementById("bookmarkList")
+  bookmarkList: document.getElementById("bookmarkList"),
+  definitionDialog: document.getElementById("definitionDialog"),
+  definitionWord: document.getElementById("definitionWord"),
+  definitionContext: document.getElementById("definitionContext"),
+  definitionResults: document.getElementById("definitionResults"),
+  definitionSeekButton: document.getElementById("definitionSeekButton"),
+  definitionCopyButton: document.getElementById("definitionCopyButton")
 };
 
 init().catch(error => {
@@ -108,6 +134,23 @@ function bindEvents() {
   });
   els.bookmarkButton.addEventListener("click", saveBookmark);
   els.bookmarksButton.addEventListener("click", showBookmarks);
+  els.textView.addEventListener("click", onTextViewClick);
+  els.definitionSeekButton.addEventListener("click", () => {
+    if (state.definitionWordIndex >= 0) {
+      seekToWordIndex(state.definitionWordIndex);
+      els.definitionDialog.close();
+    }
+  });
+  els.definitionCopyButton.addEventListener("click", async () => {
+    const word = normalizeLookupWord(els.definitionWord.textContent);
+    if (!word) return;
+    try {
+      await navigator.clipboard.writeText(word);
+      setStatus(`Copied ${word}.`);
+    } catch {
+      setStatus(word);
+    }
+  });
   els.showImagesToggle.addEventListener("change", async () => {
     state.settings.showImages = els.showImagesToggle.checked;
     saveSettings(state.settings);
@@ -412,6 +455,12 @@ async function loadPage(pageNumber, savedState = null) {
 
   const pageJson = await readStoredJson(state.currentBook.id, manifestPage.textPath);
   const timings = await readStoredJson(state.currentBook.id, manifestPage.timingsPath);
+  const castBible = state.currentManifest.voiceCastPath
+    ? await readStoredJson(state.currentBook.id, state.currentManifest.voiceCastPath).catch(() => null)
+    : null;
+  const voicePlan = manifestPage.voiceCastPath
+    ? await readStoredJson(state.currentBook.id, manifestPage.voiceCastPath).catch(() => null)
+    : null;
   const audioBlob = await readStoredBlob(state.currentBook.id, manifestPage.audioPath);
   const audioUrl = URL.createObjectURL(audioBlob);
   state.currentUrls.push(audioUrl);
@@ -426,12 +475,17 @@ async function loadPage(pageNumber, savedState = null) {
   }
 
   state.currentPageNumber = pageNumber;
+  const speakers = buildSpeakers(castBible, voicePlan);
   state.currentPage = {
     manifestPage,
     text: pageJson.text || "",
     timings: Array.isArray(timings) ? timings : [],
+    voicePlan,
+    speakers,
     duration: manifestPage.durationSeconds || 0
   };
+  state.currentWordIndex = -1;
+  state.currentSentenceId = "";
 
   els.emptyState.hidden = true;
   els.pageView.hidden = false;
@@ -440,7 +494,8 @@ async function loadPage(pageNumber, savedState = null) {
   els.pageImage.hidden = !imageUrl;
   els.pageImage.src = imageUrl;
   els.pageImage.alt = imageUrl ? `Generated image for page ${pageNumber}` : "";
-  els.textView.innerHTML = renderText(state.currentPage.text, state.currentPage.timings);
+  renderSpeakerLegend(speakers);
+  els.textView.innerHTML = renderText(state.currentPage.text, state.currentPage.timings, speakers, voicePlan);
   els.audio.src = audioUrl;
   els.progressSlider.max = String(Math.max(1, state.currentPage.duration));
   els.progressSlider.value = String(savedState?.pageNumber === pageNumber ? savedState.audioPositionSeconds || 0 : 0);
@@ -504,6 +559,106 @@ function seekBy(seconds) {
   updateFromAudio();
 }
 
+function onTextViewClick(event) {
+  const word = event.target.closest?.(".word");
+  if (!word || !els.textView.contains(word)) return;
+  showDefinitionForWord(word);
+}
+
+function seekToWordIndex(wordIndex) {
+  if (!state.currentBook || !state.currentPage) return;
+  const timing = state.currentPage.timings.find(item => Number(item.index) === Number(wordIndex));
+  if (!timing) return;
+  const duration = els.audio.duration || state.currentPage.duration || 1;
+  els.audio.currentTime = clamp(Number(timing.startSeconds) || 0, 0, duration);
+  updateFromAudio();
+  saveReadingState();
+  setStatus(`Moved audio to word ${Number(wordIndex) + 1}.`);
+}
+
+async function showDefinitionForWord(wordElement) {
+  const rawWord = wordElement.textContent || "";
+  const word = normalizeLookupWord(rawWord);
+  if (!word) return;
+
+  state.definitionWordIndex = Number(wordElement.dataset.index) || 0;
+  els.definitionWord.textContent = word;
+  els.definitionContext.textContent = contextAroundWord(wordElement);
+  els.definitionResults.innerHTML = `<p class="book-meta">Looking up ${escapeHtml(word)}...</p>`;
+  els.definitionSeekButton.disabled = false;
+
+  if (!els.definitionDialog.open && typeof els.definitionDialog.showModal === "function") {
+    els.definitionDialog.showModal();
+  } else {
+    els.definitionDialog.open = true;
+  }
+
+  try {
+    const entries = await lookupDefinition(word);
+    renderDefinitionResults(word, entries);
+  } catch (error) {
+    console.warn(error);
+    els.definitionResults.innerHTML = `
+      <p class="book-meta">Definition lookup needs internet and did not find ${escapeHtml(word)} right now.</p>
+    `;
+  }
+}
+
+function normalizeLookupWord(value) {
+  return String(value || "")
+    .replace(/^[^A-Za-z']+|[^A-Za-z']+$/g, "")
+    .replace(/'{2,}/g, "'")
+    .trim()
+    .toLowerCase();
+}
+
+function contextAroundWord(wordElement) {
+  const sentenceId = wordElement.dataset.sentenceId;
+  const words = Array.from(els.textView.querySelectorAll(sentenceId
+    ? `.word[data-sentence-id="${sentenceId}"]`
+    : ".word"));
+  const sentence = words.map(word => word.textContent).join(" ").replace(/\s+([,.;:!?])/g, "$1");
+  if (sentence.length <= 180) return sentence;
+  const index = words.indexOf(wordElement);
+  const slice = words.slice(Math.max(0, index - 8), Math.min(words.length, index + 9));
+  return slice.map(word => word.textContent).join(" ").replace(/\s+([,.;:!?])/g, "$1");
+}
+
+async function lookupDefinition(word) {
+  const response = await fetch(`${DICTIONARY_API_URL}${encodeURIComponent(word)}`);
+  if (!response.ok) throw new Error(`Definition failed: ${response.status}`);
+  return response.json();
+}
+
+function renderDefinitionResults(word, entries) {
+  const senses = [];
+  for (const entry of Array.isArray(entries) ? entries : []) {
+    for (const meaning of entry.meanings || []) {
+      for (const item of meaning.definitions || []) {
+        if (!item.definition) continue;
+        senses.push({
+          partOfSpeech: meaning.partOfSpeech || "",
+          definition: item.definition,
+          example: item.example || ""
+        });
+      }
+    }
+  }
+
+  if (!senses.length) {
+    els.definitionResults.innerHTML = `<p class="book-meta">No definition found for ${escapeHtml(word)}.</p>`;
+    return;
+  }
+
+  els.definitionResults.innerHTML = senses.slice(0, 4).map(sense => `
+    <section class="definition-sense">
+      ${sense.partOfSpeech ? `<strong>${escapeHtml(sense.partOfSpeech)}</strong>` : ""}
+      <p>${escapeHtml(sense.definition)}</p>
+      ${sense.example ? `<q>${escapeHtml(sense.example)}</q>` : ""}
+    </section>
+  `).join("");
+}
+
 function updateFromAudio() {
   const duration = els.audio.duration || state.currentPage?.duration || 1;
   const time = clamp(els.audio.currentTime || 0, 0, duration);
@@ -528,6 +683,9 @@ function updateHighlight(time) {
 
   const old = els.textView.querySelector(".word.current");
   old?.classList.remove("current");
+  for (const word of els.textView.querySelectorAll(".word.sentence-current")) {
+    word.classList.remove("sentence-current");
+  }
   state.currentWordIndex = nextIndex;
 
   for (const word of els.textView.querySelectorAll(".word")) {
@@ -538,7 +696,17 @@ function updateHighlight(time) {
   const current = els.textView.querySelector(`.word[data-index="${nextIndex}"]`);
   if (current) {
     current.classList.add("current");
+    state.currentSentenceId = current.dataset.sentenceId || "";
+    if (state.currentSentenceId) {
+      for (const word of els.textView.querySelectorAll(`.word[data-sentence-id="${state.currentSentenceId}"]`)) {
+        word.classList.add("sentence-current");
+      }
+    }
+    updateSpeakerNow(current.dataset.speaker || "", current.dataset.speakerName || "");
     current.scrollIntoView({ block: "center", behavior: "smooth" });
+  } else {
+    state.currentSentenceId = "";
+    updateSpeakerNow("", "");
   }
 }
 
@@ -783,13 +951,14 @@ function validateManifest(manifest) {
   }
 }
 
-function renderText(text, timings) {
+function renderText(text, timings, speakers = new Map(), voicePlan = null) {
   if (!Array.isArray(timings) || timings.length === 0) {
     return textBlocks(text).map((block, index) =>
       `<${blockTag(block.text, index)}>${escapeHtml(normalizeWhitespace(block.text))}</${blockTag(block.text, index)}>`
     ).join("");
   }
 
+  const sentenceBoundaries = buildSentenceBoundaries(text);
   return textBlocks(text).map((block, blockIndex) => {
     const tag = blockTag(block.text, blockIndex);
     let cursor = block.start;
@@ -803,7 +972,23 @@ function renderText(text, timings) {
       }
       const end = clamp(timing.textOffset + Math.max(0, timing.textLength || 0), timing.textOffset, blockEnd);
       const wordText = end > timing.textOffset ? text.slice(timing.textOffset, end) : timing.word || "";
-      html += `<span class="word" data-index="${Number(timing.index) || 0}">${escapeHtml(wordText)}</span>`;
+      const segment = segmentForTiming(timing, voicePlan);
+      const speaker = speakerForSegment(segment, speakers);
+      const wordIndex = Number(timing.index) || 0;
+      const sentenceId = sentenceIdForOffset(sentenceBoundaries, timing.textOffset);
+      const kind = segment?.kind || speaker.kind || "narration";
+      html += [
+        `<span class="word"`,
+        ` data-index="${wordIndex}"`,
+        ` data-start="${Number(timing.startSeconds) || 0}"`,
+        ` data-segment-id="${escapeHtml(segment?.id || "")}"`,
+        ` data-sentence-id="${sentenceId}"`,
+        ` data-kind="${escapeHtml(kind)}"`,
+        ` data-speaker="${escapeHtml(speaker.id)}"`,
+        ` data-speaker-name="${escapeHtml(speaker.name)}"`,
+        ` style="--speaker-color: ${escapeHtml(speaker.color)}"`,
+        `>${escapeHtml(wordText)}</span>`
+      ].join("");
       cursor = Math.max(cursor, end);
     }
 
@@ -813,6 +998,152 @@ function renderText(text, timings) {
 
     return `<${tag}>${html}</${tag}>`;
   }).join("");
+}
+
+function buildSpeakers(castBible, voicePlan) {
+  const speakers = new Map();
+  const addSpeaker = (id, speaker = {}, index = speakers.size) => {
+    const key = String(id || speaker.id || speaker.speakerId || `speaker-${index}`);
+    if (!key || speakers.has(key)) return;
+    const role = String(speaker.role || speaker.kind || "").toLowerCase();
+    const name = speaker.name || speaker.speakerName || (role === "narrator" ? "Narrator" : key);
+    speakers.set(key, {
+      id: key,
+      name,
+      kind: role || "dialogue",
+      voiceName: speaker.voiceName || "",
+      color: speaker.color || colorForSpeaker(key, index, role)
+    });
+  };
+
+  if (castBible?.narrator) {
+    addSpeaker(castBible.narrator.id || "narrator", castBible.narrator, 0);
+  }
+
+  const characters = Array.isArray(castBible?.characters) ? castBible.characters : [];
+  characters.forEach((speaker, index) => addSpeaker(speaker.id, speaker, index + 1));
+
+  const segments = Array.isArray(voicePlan?.segments) ? voicePlan.segments : [];
+  for (const segment of segments) {
+    if (!segment?.speakerId) continue;
+    addSpeaker(segment.speakerId, {
+      name: segment.speakerName,
+      voiceName: segment.voiceName,
+      color: segment.color,
+      kind: segment.kind
+    });
+  }
+
+  if (!speakers.size && segments.length) {
+    addSpeaker("narrator", { name: "Narrator", kind: "narration" }, 0);
+  }
+
+  return speakers;
+}
+
+function colorForSpeaker(id, index, role = "") {
+  if (role === "narrator" || id === "narrator") return NARRATOR_COLOR;
+  const hash = Array.from(String(id || index)).reduce((total, char) => total + char.charCodeAt(0), 0);
+  return SPEAKER_COLORS[(hash + index) % SPEAKER_COLORS.length] || FALLBACK_COLOR;
+}
+
+function segmentForTiming(timing, voicePlan) {
+  const segments = Array.isArray(voicePlan?.segments) ? voicePlan.segments : [];
+  if (!segments.length) return null;
+
+  const offset = Number(timing.textOffset) || 0;
+  const midpoint = offset + Math.max(1, Number(timing.textLength) || 1) / 2;
+  return segments.find(segment => {
+    const start = Number(segment.textOffset) || 0;
+    const length = Math.max(0, Number(segment.textLength) || 0);
+    const end = start + length;
+    return midpoint >= start && midpoint <= end;
+  }) || segments.find(segment => {
+    const start = Number(segment.textOffset) || 0;
+    const length = Math.max(0, Number(segment.textLength) || 0);
+    return offset >= start && offset <= start + length;
+  }) || null;
+}
+
+function speakerForSegment(segment, speakers) {
+  if (segment?.speakerId && speakers.has(String(segment.speakerId))) {
+    return speakers.get(String(segment.speakerId));
+  }
+
+  const fallbackId = segment?.kind === "dialogue" ? "speaker" : "narrator";
+  return speakers.get(fallbackId) || {
+    id: fallbackId,
+    name: segment?.speakerName || (fallbackId === "narrator" ? "Narrator" : "Speaker"),
+    kind: segment?.kind || "narration",
+    voiceName: segment?.voiceName || "",
+    color: segment?.color || (fallbackId === "narrator" ? NARRATOR_COLOR : FALLBACK_COLOR)
+  };
+}
+
+function renderSpeakerLegend(speakers) {
+  els.speakerLegend.replaceChildren();
+  if (!speakers?.size) {
+    els.speakerLegend.hidden = true;
+    return;
+  }
+
+  const now = document.createElement("div");
+  now.className = "speaker-now";
+  now.textContent = "Speaking: -";
+  els.speakerLegend.append(now);
+
+  for (const speaker of speakers.values()) {
+    const chip = document.createElement("span");
+    chip.className = "speaker-chip";
+    chip.dataset.speaker = speaker.id;
+    chip.style.setProperty("--speaker-color", speaker.color);
+    chip.innerHTML = `
+      <span class="speaker-swatch" aria-hidden="true"></span>
+      <span>${escapeHtml(speaker.name)}</span>
+    `;
+    if (speaker.voiceName) {
+      chip.title = speaker.voiceName;
+    }
+    els.speakerLegend.append(chip);
+  }
+
+  els.speakerLegend.hidden = false;
+}
+
+function updateSpeakerNow(speakerId, speakerName) {
+  if (!els.speakerLegend || els.speakerLegend.hidden) return;
+  const label = els.speakerLegend.querySelector(".speaker-now");
+  if (label) {
+    label.textContent = speakerName ? `Speaking: ${speakerName}` : "Speaking: -";
+  }
+
+  for (const chip of els.speakerLegend.querySelectorAll(".speaker-chip")) {
+    chip.classList.toggle("active", Boolean(speakerId) && chip.dataset.speaker === speakerId);
+  }
+}
+
+function buildSentenceBoundaries(text) {
+  const boundaries = [];
+  let start = 0;
+  let id = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    const next = text[index + 1] || "";
+    if (/[.!?]/.test(char) && (next === "" || /\s|["')\]]/.test(next))) {
+      boundaries.push({ id: String(id), start, end: index + 1 });
+      id += 1;
+      start = index + 1;
+    }
+  }
+  if (start < text.length) {
+    boundaries.push({ id: String(id), start, end: text.length });
+  }
+  return boundaries;
+}
+
+function sentenceIdForOffset(boundaries, offset) {
+  const hit = boundaries.find(sentence => offset >= sentence.start && offset < sentence.end);
+  return hit?.id || "0";
 }
 
 function textBlocks(text) {
