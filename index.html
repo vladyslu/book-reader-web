@@ -20,29 +20,29 @@
         <h1>Book Reader</h1>
         <p id="statusText">Ready</p>
       </div>
-      <label class="import-button">
-        <span>Import</span>
+      <label class="import-button" aria-label="Import package" title="Import package">
+        <span aria-hidden="true">+</span>
         <input id="packageInput" type="file" accept=".abrbook,application/zip,application/x-zip-compressed">
       </label>
-      <button id="refreshCatalogButton" type="button">Refresh</button>
-      <button id="homeServerButton" type="button">Home PC</button>
+      <button id="refreshCatalogButton" type="button" aria-label="Refresh Home Library" title="Refresh Home Library">↻</button>
+      <button id="homeServerButton" type="button" aria-label="Home PC" title="Home PC">⌂</button>
     </header>
 
     <main class="reader-layout">
       <aside class="library-panel" aria-label="Library">
         <div class="panel-heading">
           <h2>Saved Books</h2>
-          <button id="deleteBookButton" class="ghost-button" type="button" disabled>Delete</button>
+          <button id="deleteBookButton" class="ghost-button" type="button" disabled aria-label="Delete book" title="Delete book">×</button>
         </div>
         <div id="libraryList" class="library-list"></div>
         <div class="panel-heading online-heading">
           <h2>Home Library</h2>
           <div class="heading-actions">
-            <label class="ghost-button home-upload-button">
-              <span>Add</span>
+            <label class="ghost-button home-upload-button" aria-label="Add book to Home Library" title="Add book to Home Library">
+              <span aria-hidden="true">+</span>
               <input id="homeLibraryInput" type="file" accept=".abrbook,application/zip,application/x-zip-compressed">
             </label>
-            <button id="saveHomeBooksButton" class="primary-button" type="button" disabled>Save</button>
+            <button id="saveHomeBooksButton" class="primary-button" type="button" disabled aria-label="Save Home Library books" title="Save Home Library books">↓</button>
           </div>
         </div>
         <div id="catalogList" class="library-list catalog-list"></div>
@@ -67,9 +67,10 @@
     </main>
 
     <footer class="player-bar">
+      <button id="exitReaderModeButton" class="mode-exit-button" type="button" aria-label="Exit reader mode" title="Exit reader mode" hidden>×</button>
       <div class="page-actions">
-        <button id="previousPageButton" type="button">Prev</button>
-        <button id="nextPageButton" type="button">Next</button>
+        <button id="previousPageButton" type="button" aria-label="Previous page" title="Previous page">‹</button>
+        <button id="nextPageButton" type="button" aria-label="Next page" title="Next page">›</button>
         <label class="toggle-row">
           <input id="showImagesToggle" type="checkbox" checked>
           <span>Images</span>
@@ -88,9 +89,9 @@
       </div>
 
       <div class="playback-actions">
-        <button id="rewindButton" type="button">-15s</button>
-        <button id="playPauseButton" class="primary-button" type="button">Play</button>
-        <button id="forwardButton" type="button">+15s</button>
+        <button id="rewindButton" type="button" aria-label="Back 15 seconds" title="Back 15 seconds">↺15</button>
+        <button id="playPauseButton" class="primary-button" type="button" aria-label="Play" title="Play">▶</button>
+        <button id="forwardButton" type="button" aria-label="Forward 15 seconds" title="Forward 15 seconds">15↻</button>
       </div>
 
       <div class="progress-row">
@@ -100,8 +101,9 @@
       </div>
 
       <div class="bookmark-actions">
-        <button id="bookmarkButton" type="button">Bookmark</button>
-        <button id="bookmarksButton" type="button">Bookmarks</button>
+        <button id="bookmarkButton" type="button" aria-label="Add bookmark" title="Add bookmark">★</button>
+        <button id="bookmarksButton" type="button" aria-label="Open bookmarks" title="Open bookmarks">☰★</button>
+        <button id="readerModeButton" type="button" aria-label="Reader mode" title="Reader mode">▣</button>
       </div>
     </footer>
   </div>

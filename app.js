@@ -74,6 +74,8 @@ const els = {
   durationLabel: document.getElementById("durationLabel"),
   bookmarkButton: document.getElementById("bookmarkButton"),
   bookmarksButton: document.getElementById("bookmarksButton"),
+  readerModeButton: document.getElementById("readerModeButton"),
+  exitReaderModeButton: document.getElementById("exitReaderModeButton"),
   showImagesToggle: document.getElementById("showImagesToggle"),
   readerFontSelect: document.getElementById("readerFontSelect"),
   homeServerDialog: document.getElementById("homeServerDialog"),
@@ -141,6 +143,8 @@ function bindEvents() {
   });
   els.bookmarkButton.addEventListener("click", saveBookmark);
   els.bookmarksButton.addEventListener("click", showBookmarks);
+  els.readerModeButton.addEventListener("click", enterReaderMode);
+  els.exitReaderModeButton.addEventListener("click", exitReaderMode);
   els.textView.addEventListener("click", onTextViewClick);
   els.definitionSeekButton.addEventListener("click", () => {
     if (state.definitionWordIndex >= 0) {
@@ -414,7 +418,9 @@ function renderCatalog() {
     const action = document.createElement("button");
     action.type = "button";
     const saved = savedIds.has(book.id);
-    action.textContent = saved ? "Open" : "Save";
+    action.textContent = saved ? "▶" : "↓";
+    action.setAttribute("aria-label", saved ? "Open saved book" : "Save book to this phone");
+    action.title = saved ? "Open saved book" : "Save book to this phone";
     action.className = saved ? "ghost-button" : "primary-button";
     action.addEventListener("click", () => saved ? openBook(book.id) : saveCatalogBook(book));
 
@@ -522,7 +528,9 @@ function updateSaveHomeBooksButton() {
   const savedIds = new Set(state.books.map(book => book.id));
   const unsavedCount = state.catalogBooks.filter(book => !savedIds.has(book.id)).length;
   els.saveHomeBooksButton.disabled = unsavedCount === 0;
-  els.saveHomeBooksButton.textContent = unsavedCount > 1 ? "Save All" : "Save";
+  els.saveHomeBooksButton.textContent = unsavedCount > 1 ? "⇩" : "↓";
+  els.saveHomeBooksButton.setAttribute("aria-label", unsavedCount > 1 ? "Save all Home Library books" : "Save Home Library book");
+  els.saveHomeBooksButton.title = unsavedCount > 1 ? "Save all Home Library books" : "Save Home Library book";
 }
 
 function encodeBase64Json(value) {
@@ -607,7 +615,8 @@ async function loadPage(pageNumber, savedState = null) {
   els.progressSlider.value = String(savedState?.pageNumber === pageNumber ? savedState.audioPositionSeconds || 0 : 0);
   els.elapsedLabel.textContent = formatTime(Number(els.progressSlider.value));
   els.durationLabel.textContent = formatTime(state.currentPage.duration);
-  els.playPauseButton.textContent = "Play";
+  els.playPauseButton.textContent = "▶";
+  updatePlaybackButton();
 
   const seek = savedState?.pageNumber === pageNumber ? savedState.audioPositionSeconds || 0 : 0;
   els.audio.addEventListener("loadedmetadata", () => {
@@ -772,8 +781,28 @@ function updateFromAudio() {
   els.progressSlider.value = String(time);
   els.elapsedLabel.textContent = formatTime(time);
   els.durationLabel.textContent = formatTime(duration);
-  els.playPauseButton.textContent = els.audio.paused ? "Play" : "Pause";
+  updatePlaybackButton();
   updateHighlight(time);
+}
+
+function updatePlaybackButton() {
+  const playing = !els.audio.paused;
+  els.playPauseButton.textContent = playing ? "Ⅱ" : "▶";
+  els.playPauseButton.setAttribute("aria-label", playing ? "Pause" : "Play");
+  els.playPauseButton.title = playing ? "Pause" : "Play";
+}
+
+function enterReaderMode() {
+  if (!state.currentBook) return;
+  document.body.classList.add("reader-mode");
+  els.exitReaderModeButton.hidden = false;
+  setStatus("Reader mode.");
+}
+
+function exitReaderMode() {
+  document.body.classList.remove("reader-mode");
+  els.exitReaderModeButton.hidden = true;
+  setStatus(state.currentBook?.title || "Ready");
 }
 
 function updateHighlight(time) {
@@ -1012,6 +1041,7 @@ async function deleteBookFromDevice(bookId) {
 }
 
 function clearReader() {
+  exitReaderMode();
   revokeCurrentUrls();
   state.currentBook = null;
   state.currentManifest = null;
@@ -1317,6 +1347,7 @@ function setReaderEnabled(enabled) {
     els.progressSlider,
     els.bookmarkButton,
     els.bookmarksButton,
+    els.readerModeButton,
     els.showImagesToggle
   ]) {
     element.disabled = !enabled;

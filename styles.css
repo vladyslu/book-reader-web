@@ -442,6 +442,10 @@ dialog h2 {
   border-width: 1px 0 0;
 }
 
+.mode-exit-button {
+  display: none;
+}
+
 .page-actions,
 .playback-actions,
 .bookmark-actions,
@@ -601,6 +605,12 @@ dialog header {
 }
 
 @media (max-width: 760px) {
+  button,
+  .import-button,
+  .home-upload-button {
+    border-radius: 7px;
+  }
+
   .reader-layout {
     grid-template-columns: 1fr;
     grid-template-rows: auto minmax(0, 1fr);
@@ -621,6 +631,7 @@ dialog header {
   .topbar button,
   .topbar .import-button {
     flex: 1 1 0;
+    max-width: 54px;
   }
 
   .topbar h1 {
@@ -634,8 +645,8 @@ dialog header {
   }
 
   .library-panel {
-    min-height: 128px;
-    max-height: 150px;
+    min-height: 108px;
+    max-height: 128px;
     box-shadow: none;
   }
 
@@ -665,15 +676,17 @@ dialog header {
   }
 
   .catalog-item {
-    min-height: 42px;
+    min-height: 34px;
     gap: 6px;
-    padding: 5px;
+    padding: 4px;
+    border-radius: 6px;
   }
 
   .book-item {
-    min-height: 34px;
+    min-height: 30px;
     gap: 1px;
-    padding: 5px 7px;
+    padding: 4px 6px;
+    border-radius: 6px;
   }
 
   .book-title {
@@ -685,7 +698,7 @@ dialog header {
   }
 
   .page-view {
-    padding: 10px 12px 20px;
+    padding: 9px 12px 16px;
   }
 
   .page-meta {
@@ -700,7 +713,7 @@ dialog header {
 
   .text-view {
     font-size: 19px;
-    line-height: 1.58;
+    line-height: 1.55;
   }
 
   .text-view h1 {
@@ -713,8 +726,11 @@ dialog header {
   }
 
   .player-bar {
-    grid-template-columns: 1fr;
-    gap: 5px;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "pages progress bookmarks"
+      "play play play";
+    gap: 4px 6px;
     padding: 5px 8px calc(5px + env(safe-area-inset-bottom));
     box-shadow: none;
   }
@@ -734,12 +750,18 @@ dialog header {
   }
 
   .page-actions {
-    grid-template-columns: 48px 48px minmax(64px, 0.8fr) minmax(86px, 1fr);
+    grid-area: pages;
+    grid-template-columns: 34px 34px;
     gap: 5px;
   }
 
+  .page-actions .toggle-row,
+  .page-actions .select-row {
+    display: none;
+  }
+
   .library-panel {
-    grid-template-rows: 25px minmax(52px, 1fr) 25px minmax(26px, 0.55fr);
+    grid-template-rows: 24px minmax(44px, 1fr) 24px minmax(22px, 0.5fr);
   }
 
   .library-panel .online-heading {
@@ -759,12 +781,14 @@ dialog header {
   }
 
   .bookmark-actions {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-area: bookmarks;
+    grid-template-columns: 32px 36px 32px;
     gap: 5px;
   }
 
   .playback-actions {
-    grid-template-columns: 54px minmax(72px, 1fr) 54px;
+    grid-area: play;
+    grid-template-columns: 42px minmax(58px, 1fr) 42px;
     gap: 5px;
   }
 
@@ -773,6 +797,7 @@ dialog header {
   }
 
   .progress-row {
+    grid-area: progress;
     gap: 5px;
   }
 
@@ -838,5 +863,87 @@ dialog header {
 
   .toggle-row {
     justify-content: center;
+  }
+
+  body.reader-mode .app-shell {
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  body.reader-mode .topbar,
+  body.reader-mode .library-panel,
+  body.reader-mode .page-actions .toggle-row,
+  body.reader-mode .page-actions .select-row,
+  body.reader-mode .playback-actions #rewindButton,
+  body.reader-mode .playback-actions #forwardButton,
+  body.reader-mode .bookmark-actions {
+    display: none;
+  }
+
+  body.reader-mode .reader-layout {
+    grid-template-rows: minmax(0, 1fr);
+    padding: 0;
+  }
+
+  body.reader-mode .reader-panel {
+    border-width: 0;
+    box-shadow: none;
+  }
+
+  body.reader-mode .page-view {
+    padding: calc(8px + env(safe-area-inset-top)) 12px 18px;
+  }
+
+  body.reader-mode .page-image {
+    max-height: 22vh;
+  }
+
+  body.reader-mode .speaker-panel {
+    display: none;
+  }
+
+  body.reader-mode .text-view {
+    font-size: 20px;
+    line-height: 1.6;
+  }
+
+  body.reader-mode .player-bar {
+    grid-template-columns: 34px 34px minmax(44px, 52px) 34px minmax(0, 1fr);
+    grid-template-areas: "exit prev play next progress";
+    align-items: center;
+    padding: 5px 8px calc(5px + env(safe-area-inset-bottom));
+  }
+
+  body.reader-mode .mode-exit-button {
+    grid-area: exit;
+    display: block;
+  }
+
+  body.reader-mode .page-actions {
+    display: contents;
+  }
+
+  body.reader-mode #previousPageButton {
+    grid-area: prev;
+  }
+
+  body.reader-mode #nextPageButton {
+    grid-area: next;
+  }
+
+  body.reader-mode .playback-actions {
+    display: contents;
+  }
+
+  body.reader-mode #playPauseButton {
+    grid-area: play;
+    min-height: 34px;
+  }
+
+  body.reader-mode .progress-row {
+    grid-area: progress;
+  }
+
+  body.reader-mode .progress-row span {
+    display: none;
   }
 }
