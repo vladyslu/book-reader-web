@@ -796,6 +796,14 @@ function enterReaderMode() {
   if (!state.currentBook) return;
   document.body.classList.add("reader-mode");
   els.exitReaderModeButton.hidden = false;
+  requestAnimationFrame(() => {
+    const current = els.textView.querySelector(".word.current");
+    if (current) {
+      current.scrollIntoView({ block: "center" });
+    } else {
+      els.pageView.scrollTop = 0;
+    }
+  });
   setStatus("Reader mode.");
 }
 
