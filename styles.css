@@ -594,15 +594,15 @@ dialog header {
 @media (max-width: 760px) {
   .reader-layout {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(260px, 36dvh) minmax(0, 1fr);
-    gap: 8px;
-    padding: 8px;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 6px;
+    padding: 6px;
   }
 
   .topbar {
     flex-wrap: wrap;
-    padding-left: 10px;
-    padding-right: 10px;
+    gap: 6px;
+    padding: calc(6px + env(safe-area-inset-top)) 8px 6px;
   }
 
   .topbar > div {
@@ -615,55 +615,111 @@ dialog header {
   }
 
   .topbar h1 {
-    font-size: 20px;
+    font-size: 17px;
+  }
+
+  .topbar p {
+    margin-top: 2px;
+    max-width: 100%;
+    font-size: 11px;
   }
 
   .library-panel {
-    min-height: 260px;
+    min-height: 128px;
+    max-height: 150px;
+    box-shadow: none;
+  }
+
+  .panel-heading {
+    min-height: 25px;
+    padding: 4px 7px;
+  }
+
+  .panel-heading h2 {
+    font-size: 12px;
+  }
+
+  .library-list {
+    gap: 5px;
+    padding: 5px;
+  }
+
+  .catalog-item {
+    min-height: 42px;
+    gap: 6px;
+    padding: 5px;
+  }
+
+  .book-item {
+    min-height: 34px;
+    gap: 1px;
+    padding: 5px 7px;
+  }
+
+  .book-title {
+    font-size: 13px;
+  }
+
+  .book-meta {
+    font-size: 10px;
   }
 
   .page-view {
-    padding: 16px 15px 28px;
+    padding: 10px 12px 20px;
+  }
+
+  .page-meta {
+    margin-bottom: 8px;
+    font-size: 11px;
   }
 
   .page-image {
-    max-height: 34vh;
-    margin-bottom: 16px;
+    max-height: 24vh;
+    margin-bottom: 10px;
   }
 
   .text-view {
-    font-size: 20px;
-    line-height: 1.68;
+    font-size: 19px;
+    line-height: 1.58;
   }
 
   .text-view h1 {
-    font-size: 26px;
+    font-size: 23px;
   }
 
   .text-view h2 {
-    font-size: 21px;
+    font-size: 19px;
+    margin-bottom: 12px;
   }
 
   .player-bar {
     grid-template-columns: 1fr;
-    gap: 8px;
-    padding-left: 10px;
-    padding-right: 10px;
+    gap: 5px;
+    padding: 5px 8px calc(5px + env(safe-area-inset-bottom));
+    box-shadow: none;
+  }
+
+  .player-bar button,
+  .topbar button,
+  .topbar .import-button {
+    min-height: 32px;
+    padding: 5px 7px;
+    font-size: 12px;
   }
 
   .page-actions,
   .playback-actions,
   .bookmark-actions {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .page-actions {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 48px 48px minmax(64px, 0.8fr) minmax(86px, 1fr);
+    gap: 5px;
   }
 
   .library-panel {
-    grid-template-rows: auto minmax(112px, 1.35fr) auto minmax(64px, 0.75fr);
+    grid-template-rows: 25px minmax(52px, 1fr) 25px minmax(26px, 0.55fr);
   }
 
   .library-panel .online-heading {
@@ -684,14 +740,37 @@ dialog header {
 
   .bookmark-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .playback-actions {
+    grid-template-columns: 54px minmax(72px, 1fr) 54px;
+    gap: 5px;
   }
 
   .playback-actions .primary-button {
-    min-height: 48px;
+    min-height: 36px;
+  }
+
+  .progress-row {
+    gap: 5px;
+  }
+
+  .progress-row span {
+    width: 34px;
+    font-size: 10px;
   }
 
   .speaker-panel {
-    margin-bottom: 14px;
+    gap: 5px;
+    margin-bottom: 8px;
+    padding: 5px;
+  }
+
+  .speaker-now,
+  .speaker-chip {
+    min-height: 22px;
+    font-size: 10px;
   }
 
   .definition-dialog {
@@ -711,20 +790,29 @@ dialog header {
   button,
   .import-button {
     min-width: 0;
-    padding-left: 8px;
-    padding-right: 8px;
+    min-height: 32px;
+    padding: 5px 7px;
+    font-size: 12px;
+  }
+
+  .toggle-row,
+  .select-row {
+    min-height: 32px;
+    gap: 4px;
+    font-size: 11px;
   }
 
   .select-row {
     justify-content: space-between;
-    gap: 5px;
   }
 
   .select-row select {
     flex: 1 1 auto;
-    width: min(100%, 120px);
+    width: min(100%, 88px);
+    min-height: 32px;
     min-width: 0;
-    padding-left: 6px;
+    padding: 4px 20px 4px 6px;
+    font-size: 11px;
   }
 
   .toggle-row {

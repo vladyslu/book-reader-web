@@ -51,6 +51,7 @@ const els = {
   packageInput: document.getElementById("packageInput"),
   refreshCatalogButton: document.getElementById("refreshCatalogButton"),
   homeServerButton: document.getElementById("homeServerButton"),
+  saveHomeBooksButton: document.getElementById("saveHomeBooksButton"),
   libraryList: document.getElementById("libraryList"),
   catalogList: document.getElementById("catalogList"),
   deleteBookButton: document.getElementById("deleteBookButton"),
@@ -123,6 +124,7 @@ function bindEvents() {
   els.homeServerButton.addEventListener("click", showHomeServerDialog);
   els.homeServerCloseButton.addEventListener("click", () => els.homeServerDialog.close());
   els.clearHomeServerButton.addEventListener("click", clearHomeServer);
+  els.saveHomeBooksButton.addEventListener("click", saveUnsavedHomeBooks);
   els.packageInput.addEventListener("change", onPackageSelected);
   els.refreshCatalogButton.addEventListener("click", refreshCatalog);
   els.deleteBookButton.addEventListener("click", deleteCurrentBook);
@@ -376,6 +378,7 @@ async function refreshCatalog() {
 
 function renderCatalog() {
   els.catalogList.replaceChildren();
+  updateSaveHomeBooksButton();
 
   if (!currentHomeServerUrl()) {
     const empty = document.createElement("p");
@@ -419,6 +422,7 @@ function renderCatalog() {
     row.append(detail, actions);
     els.catalogList.append(row);
   }
+  updateSaveHomeBooksButton();
 }
 
 async function saveCatalogBook(catalogBook) {
@@ -451,6 +455,32 @@ async function saveCatalogBook(catalogBook) {
     console.error(error);
     setStatus(error.message || "Could not save Home Library book.");
   }
+}
+
+async function saveUnsavedHomeBooks() {
+  const savedIds = new Set(state.books.map(book => book.id));
+  const unsaved = state.catalogBooks.filter(book => !savedIds.has(book.id));
+  if (!unsaved.length) {
+    setStatus("Home Library books are already saved.");
+    return;
+  }
+
+  els.saveHomeBooksButton.disabled = true;
+  try {
+    for (const book of unsaved) {
+      await saveCatalogBook(book);
+    }
+    setStatus(unsaved.length === 1 ? "Saved Home Library book to this phone." : `Saved ${unsaved.length} Home Library books to this phone.`);
+  } finally {
+    updateSaveHomeBooksButton();
+  }
+}
+
+function updateSaveHomeBooksButton() {
+  const savedIds = new Set(state.books.map(book => book.id));
+  const unsavedCount = state.catalogBooks.filter(book => !savedIds.has(book.id)).length;
+  els.saveHomeBooksButton.disabled = unsavedCount === 0;
+  els.saveHomeBooksButton.textContent = unsavedCount > 1 ? "Save All" : "Save";
 }
 
 async function openBook(bookId) {
