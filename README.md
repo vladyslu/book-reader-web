@@ -22,3 +22,7 @@ Use the main project scripts:
 ```
 
 Then tap `Refresh` in the iPhone web app and `Save` the online book to local phone storage.
+
+## App lock
+
+The web app has a device app lock with `Stay logged in on this device`. It protects access to the reader UI on that browser/device. It does not protect hosted `.abrbook` files on public GitHub Pages.

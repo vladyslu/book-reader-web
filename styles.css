@@ -75,6 +75,16 @@ button:disabled {
   opacity: 0;
 }
 
+input[type="password"] {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+  padding: 10px 12px;
+}
+
 .app-shell {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
@@ -356,6 +366,64 @@ dialog {
   background: var(--panel);
   color: var(--ink);
   padding: 0;
+}
+
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: calc(18px + env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom));
+  background: rgba(247, 244, 237, 0.96);
+}
+
+.auth-overlay[hidden] {
+  display: none;
+}
+
+.auth-panel {
+  width: min(420px, 100%);
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  padding: 18px;
+}
+
+.auth-panel img {
+  width: 64px;
+  height: 64px;
+}
+
+.auth-panel h2,
+.auth-panel p {
+  margin: 0;
+}
+
+.auth-panel h2 {
+  font-size: 24px;
+}
+
+.auth-panel p {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.auth-panel label:not(.toggle-row) {
+  display: grid;
+  gap: 6px;
+  font-weight: 700;
+}
+
+.auth-remember {
+  justify-content: start;
+}
+
+.auth-note {
+  font-size: 12px;
 }
 
 dialog::backdrop {

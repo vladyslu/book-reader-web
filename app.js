@@ -4,6 +4,9 @@ const DB_NAME = "book-reader-web";
 const DB_VERSION = 1;
 const CATALOG_URL = "books/library.json";
 const SETTINGS_KEY = "book-reader-settings";
+const AUTH_KEY = "book-reader-auth";
+const AUTH_REMEMBER_KEY = "book-reader-auth-remembered";
+const AUTH_SESSION_KEY = "book-reader-auth-session";
 const STATE_KEY_PREFIX = "book-reader-state:";
 const BOOKMARK_KEY_PREFIX = "book-reader-bookmarks:";
 
@@ -26,6 +29,7 @@ const els = {
   statusText: document.getElementById("statusText"),
   packageInput: document.getElementById("packageInput"),
   refreshCatalogButton: document.getElementById("refreshCatalogButton"),
+  lockButton: document.getElementById("lockButton"),
   libraryList: document.getElementById("libraryList"),
   catalogList: document.getElementById("catalogList"),
   deleteBookButton: document.getElementById("deleteBookButton"),
@@ -47,6 +51,16 @@ const els = {
   bookmarkButton: document.getElementById("bookmarkButton"),
   bookmarksButton: document.getElementById("bookmarksButton"),
   showImagesToggle: document.getElementById("showImagesToggle"),
+  authOverlay: document.getElementById("authOverlay"),
+  authForm: document.getElementById("authForm"),
+  authTitle: document.getElementById("authTitle"),
+  authMessage: document.getElementById("authMessage"),
+  authPasscode: document.getElementById("authPasscode"),
+  authConfirmRow: document.getElementById("authConfirmRow"),
+  authPasscodeConfirm: document.getElementById("authPasscodeConfirm"),
+  stayLoggedInToggle: document.getElementById("stayLoggedInToggle"),
+  authSubmitButton: document.getElementById("authSubmitButton"),
+  resetLockButton: document.getElementById("resetLockButton"),
   bookmarkDialog: document.getElementById("bookmarkDialog"),
   bookmarkList: document.getElementById("bookmarkList")
 };
@@ -68,6 +82,7 @@ async function init() {
   state.db = await openDb();
   await registerServiceWorker();
   bindEvents();
+  await initializeAuth();
   els.showImagesToggle.checked = state.settings.showImages;
   await refreshLibrary();
   await refreshCatalog();
@@ -76,6 +91,9 @@ async function init() {
 }
 
 function bindEvents() {
+  els.authForm.addEventListener("submit", onAuthSubmit);
+  els.resetLockButton.addEventListener("click", resetDeviceLock);
+  els.lockButton.addEventListener("click", lockApp);
   els.packageInput.addEventListener("change", onPackageSelected);
   els.refreshCatalogButton.addEventListener("click", refreshCatalog);
   els.deleteBookButton.addEventListener("click", deleteCurrentBook);
@@ -110,6 +128,123 @@ function bindEvents() {
     }
   });
   window.addEventListener("beforeunload", saveReadingState);
+}
+
+async function initializeAuth() {
+  const auth = loadAuth();
+  els.stayLoggedInToggle.checked = localStorage.getItem(AUTH_REMEMBER_KEY) === "true";
+  if (!auth?.passwordHash || !auth?.salt) {
+    showAuthOverlay("create");
+    return;
+  }
+
+  if (localStorage.getItem(AUTH_REMEMBER_KEY) === "true" || sessionStorage.getItem(AUTH_SESSION_KEY) === "true") {
+    hideAuthOverlay();
+    return;
+  }
+
+  showAuthOverlay("unlock");
+}
+
+function showAuthOverlay(mode, message = "") {
+  els.authOverlay.hidden = false;
+  els.authForm.dataset.mode = mode;
+  const creating = mode === "create";
+  els.authTitle.textContent = creating ? "Create App Lock" : "Unlock Book Reader";
+  els.authMessage.textContent = message || (creating
+    ? "Choose a passcode for this device."
+    : "Enter your passcode.");
+  els.authConfirmRow.hidden = !creating;
+  els.authPasscode.autocomplete = creating ? "new-password" : "current-password";
+  els.authPasscode.value = "";
+  els.authPasscodeConfirm.value = "";
+  els.authPasscodeConfirm.required = creating;
+  els.authSubmitButton.textContent = creating ? "Create Lock" : "Unlock";
+  setTimeout(() => els.authPasscode.focus(), 50);
+}
+
+function hideAuthOverlay() {
+  els.authOverlay.hidden = true;
+}
+
+async function onAuthSubmit(event) {
+  event.preventDefault();
+  const mode = els.authForm.dataset.mode || "unlock";
+  const passcode = els.authPasscode.value;
+  if (passcode.length < 4) {
+    showAuthOverlay(mode, "Use at least 4 characters.");
+    return;
+  }
+
+  if (mode === "create") {
+    if (passcode !== els.authPasscodeConfirm.value) {
+      showAuthOverlay("create", "Passcodes do not match.");
+      return;
+    }
+
+    const salt = crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
+    const passwordHash = await hashPasscode(passcode, salt);
+    localStorage.setItem(AUTH_KEY, JSON.stringify({ salt, passwordHash, createdAtUtc: new Date().toISOString() }));
+    rememberUnlock();
+    hideAuthOverlay();
+    setStatus("App lock created.");
+    return;
+  }
+
+  const auth = loadAuth();
+  if (!auth?.salt || !auth?.passwordHash) {
+    showAuthOverlay("create");
+    return;
+  }
+
+  const passwordHash = await hashPasscode(passcode, auth.salt);
+  if (passwordHash !== auth.passwordHash) {
+    showAuthOverlay("unlock", "Wrong passcode.");
+    return;
+  }
+
+  rememberUnlock();
+  hideAuthOverlay();
+  setStatus("Unlocked.");
+}
+
+function rememberUnlock() {
+  if (els.stayLoggedInToggle.checked) {
+    localStorage.setItem(AUTH_REMEMBER_KEY, "true");
+    sessionStorage.removeItem(AUTH_SESSION_KEY);
+  } else {
+    localStorage.removeItem(AUTH_REMEMBER_KEY);
+    sessionStorage.setItem(AUTH_SESSION_KEY, "true");
+  }
+}
+
+function lockApp() {
+  localStorage.removeItem(AUTH_REMEMBER_KEY);
+  sessionStorage.removeItem(AUTH_SESSION_KEY);
+  els.audio.pause();
+  showAuthOverlay(loadAuth() ? "unlock" : "create");
+  setStatus("Locked.");
+}
+
+function resetDeviceLock() {
+  if (!confirm("Reset the app lock on this device? Local saved books will stay on this device.")) {
+    return;
+  }
+
+  localStorage.removeItem(AUTH_KEY);
+  localStorage.removeItem(AUTH_REMEMBER_KEY);
+  sessionStorage.removeItem(AUTH_SESSION_KEY);
+  showAuthOverlay("create", "Create a new passcode.");
+}
+
+function loadAuth() {
+  return readLocalJson(AUTH_KEY, null);
+}
+
+async function hashPasscode(passcode, salt) {
+  const data = new TextEncoder().encode(`${salt}:${passcode}`);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, "0")).join("");
 }
 
 async function onPackageSelected(event) {

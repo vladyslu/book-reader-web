@@ -25,6 +25,7 @@
         <input id="packageInput" type="file" accept=".abrbook,application/zip,application/x-zip-compressed">
       </label>
       <button id="refreshCatalogButton" type="button">Refresh</button>
+      <button id="lockButton" type="button">Lock</button>
     </header>
 
     <main class="reader-layout">
@@ -87,6 +88,28 @@
   </div>
 
   <audio id="audioPlayer" preload="metadata"></audio>
+  <section id="authOverlay" class="auth-overlay" aria-label="App lock">
+    <form id="authForm" class="auth-panel">
+      <img src="icon.svg" alt="">
+      <h2 id="authTitle">Unlock Book Reader</h2>
+      <p id="authMessage">Enter your passcode.</p>
+      <label>
+        <span>Passcode</span>
+        <input id="authPasscode" type="password" autocomplete="current-password" required minlength="4">
+      </label>
+      <label id="authConfirmRow">
+        <span>Confirm passcode</span>
+        <input id="authPasscodeConfirm" type="password" autocomplete="new-password" minlength="4">
+      </label>
+      <label class="toggle-row auth-remember">
+        <input id="stayLoggedInToggle" type="checkbox">
+        <span>Stay logged in on this device</span>
+      </label>
+      <button id="authSubmitButton" class="primary-button" type="submit">Unlock</button>
+      <button id="resetLockButton" class="ghost-button" type="button">Reset this device lock</button>
+      <p class="auth-note">This protects the app on this device. Public hosted book files still need private hosting for real online privacy.</p>
+    </form>
+  </section>
   <dialog id="bookmarkDialog">
     <form method="dialog">
       <header>
