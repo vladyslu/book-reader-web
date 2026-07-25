@@ -33,12 +33,12 @@ cd "C:\Users\vlady\Documents\Book Reader"
 The server prints one or more iPhone URLs like:
 
 ```text
-http://192.168.1.95:8765
+http://192.168.1.90:8765
 ```
 
-On the iPhone, open the installed Book Reader and tap `Refresh`. The app defaults to `http://192.168.1.95:8765`. Tap `Home PC` only if your PC address changes. Tap `Save` beside a Home Library book. After saving, it appears under `Saved Books` and works offline.
+On the iPhone, open the installed Book Reader and tap `Refresh`. The app defaults to `http://192.168.1.90:8765`. Tap `Home PC` only if your PC address changes. Tap `Save` beside a Home Library book. After saving, it appears under `Saved Books` and works offline.
 
-If the GitHub app cannot fetch the PC URL because of iOS browser limits, open `http://192.168.1.95:8765` directly on the iPhone while home and use the same `Save` button there. Private books still stay off GitHub.
+If the GitHub app cannot fetch the PC URL because of iOS browser limits, open `http://192.168.1.90:8765` directly on the iPhone while home and use the same `Save` button there. Private books still stay off GitHub.
 
 ## Remove Books
 

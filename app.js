@@ -5,7 +5,7 @@ const DB_VERSION = 1;
 const CATALOG_URL = "books/library.json";
 const SETTINGS_KEY = "book-reader-settings";
 const HOME_SERVER_KEY = "book-reader-home-server";
-const DEFAULT_HOME_SERVER_URL = "http://192.168.1.95:8765";
+const DEFAULT_HOME_SERVER_URL = "http://192.168.1.90:8765";
 const OLD_EXAMPLE_HOME_SERVER_URL = "http://192.168.1.25:8765";
 const STATE_KEY_PREFIX = "book-reader-state:";
 const BOOKMARK_KEY_PREFIX = "book-reader-bookmarks:";
@@ -183,7 +183,7 @@ function bindEvents() {
 
 function loadHomeServerUrl() {
   const saved = normalizeHomeServerUrl(localStorage.getItem(HOME_SERVER_KEY));
-  if (saved === OLD_EXAMPLE_HOME_SERVER_URL || saved === "http://192.168.1.90:8765") {
+  if (saved === OLD_EXAMPLE_HOME_SERVER_URL || saved === "http://192.168.1.95:8765") {
     localStorage.setItem(HOME_SERVER_KEY, DEFAULT_HOME_SERVER_URL);
     return DEFAULT_HOME_SERVER_URL;
   }
