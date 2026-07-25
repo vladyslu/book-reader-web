@@ -48,6 +48,9 @@ const state = {
 
 const els = {
   statusText: document.getElementById("statusText"),
+  libraryButton: document.getElementById("libraryButton"),
+  libraryDialog: document.getElementById("libraryDialog"),
+  libraryCloseButton: document.getElementById("libraryCloseButton"),
   packageInput: document.getElementById("packageInput"),
   refreshCatalogButton: document.getElementById("refreshCatalogButton"),
   homeServerButton: document.getElementById("homeServerButton"),
@@ -119,10 +122,12 @@ async function init() {
   await refreshLibrary();
   await refreshCatalog();
   setReaderEnabled(false);
-  setStatus(state.books.length || state.catalogBooks.length ? "Ready" : "Import an .abrbook package or connect Home PC.");
+  setStatus(state.books.length || state.catalogBooks.length ? "Ready" : "Open Library to add or choose a book.");
 }
 
 function bindEvents() {
+  els.libraryButton.addEventListener("click", showLibraryDialog);
+  els.libraryCloseButton.addEventListener("click", closeLibraryDialog);
   els.homeServerForm.addEventListener("submit", saveHomeServer);
   els.homeServerButton.addEventListener("click", showHomeServerDialog);
   els.homeServerCloseButton.addEventListener("click", () => els.homeServerDialog.close());
@@ -187,6 +192,22 @@ function bindEvents() {
     }
   });
   window.addEventListener("beforeunload", saveReadingState);
+}
+
+function showLibraryDialog() {
+  renderLibrary();
+  renderCatalog();
+  if (!els.libraryDialog.open && typeof els.libraryDialog.showModal === "function") {
+    els.libraryDialog.showModal();
+  } else {
+    els.libraryDialog.open = true;
+  }
+}
+
+function closeLibraryDialog() {
+  if (els.libraryDialog.open) {
+    els.libraryDialog.close();
+  }
 }
 
 function loadHomeServerUrl() {
@@ -307,6 +328,7 @@ async function onPackageSelected(event) {
     await refreshLibrary();
     await refreshCatalog();
     await openBook(manifest.id);
+    closeLibraryDialog();
     setStatus(`Imported ${manifest.title}.`);
   } catch (error) {
     console.error(error);
@@ -459,6 +481,7 @@ async function saveCatalogBook(catalogBook) {
     });
     await refreshLibrary();
     await openBook(manifest.id);
+    closeLibraryDialog();
     setStatus(`Saved ${manifest.title} to this phone.`);
   } catch (error) {
     console.error(error);
@@ -557,6 +580,7 @@ async function openBook(bookId) {
   renderLibrary();
   await loadPage(state.currentPageNumber, saved);
   setReaderEnabled(true);
+  closeLibraryDialog();
   setStatus(book.title);
 }
 
