@@ -508,27 +508,23 @@ dialog header {
   text-align: left;
 }
 
-.account-dialog {
+.settings-dialog {
   width: min(440px, calc(100vw - 28px));
 }
 
-.account-fields {
+.settings-fields {
   display: grid;
   gap: 12px;
   padding: 12px;
 }
 
-.account-fields label:not(.toggle-row) {
+.settings-fields label:not(.toggle-row) {
   display: grid;
   gap: 6px;
   font-weight: 700;
 }
 
-.account-remember {
-  justify-content: start;
-}
-
-.account-actions {
+.settings-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
@@ -536,7 +532,7 @@ dialog header {
   border-top: 1px solid var(--line);
 }
 
-.account-actions .ghost-button {
+.settings-actions .ghost-button {
   grid-column: 1 / -1;
 }
 
@@ -689,7 +685,7 @@ dialog header {
     border-radius: 8px 8px 0 0;
   }
 
-  .account-dialog {
+  .settings-dialog {
     width: 100%;
     max-width: none;
     margin: auto 0 0;

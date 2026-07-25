@@ -25,18 +25,18 @@
         <input id="packageInput" type="file" accept=".abrbook,application/zip,application/x-zip-compressed">
       </label>
       <button id="refreshCatalogButton" type="button">Refresh</button>
-      <button id="accountButton" type="button">Sign In</button>
+      <button id="homeServerButton" type="button">Home PC</button>
     </header>
 
     <main class="reader-layout">
       <aside class="library-panel" aria-label="Library">
         <div class="panel-heading">
-          <h2>Library</h2>
+          <h2>Saved Books</h2>
           <button id="deleteBookButton" class="ghost-button" type="button" disabled>Delete</button>
         </div>
         <div id="libraryList" class="library-list"></div>
         <div class="panel-heading online-heading">
-          <h2>Cloud</h2>
+          <h2>Home Library</h2>
         </div>
         <div id="catalogList" class="library-list catalog-list"></div>
       </aside>
@@ -100,33 +100,24 @@
   </div>
 
   <audio id="audioPlayer" preload="metadata"></audio>
-  <dialog id="accountDialog" class="account-dialog">
-    <form id="accountForm">
+  <dialog id="homeServerDialog" class="settings-dialog">
+    <form id="homeServerForm">
       <header>
         <div>
-          <h2 id="accountTitle">Sign In</h2>
-          <p id="accountMessage" class="definition-context">Use the same login name and PIN on PC and iPhone.</p>
+          <h2>Home PC</h2>
+          <p id="homeServerMessage" class="definition-context">Use the address printed by the PC home library server.</p>
         </div>
-        <button id="accountCloseButton" type="button" class="icon-button" aria-label="Close">x</button>
+        <button id="homeServerCloseButton" type="button" class="icon-button" aria-label="Close">x</button>
       </header>
-      <div class="account-fields">
-      <label>
-        <span>Login Name</span>
-        <input id="accountLoginName" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required minlength="3" maxlength="32">
-      </label>
-      <label>
-        <span>4-digit PIN</span>
-        <input id="accountPin" type="password" inputmode="numeric" pattern="[0-9]{4}" autocomplete="current-password" required minlength="4" maxlength="4">
-      </label>
-      <label class="toggle-row account-remember">
-        <input id="stayLoggedInToggle" type="checkbox">
-        <span>Stay logged in</span>
-      </label>
+      <div class="settings-fields">
+        <label>
+          <span>Home PC URL</span>
+          <input id="homeServerUrl" type="url" inputmode="url" autocapitalize="none" spellcheck="false" placeholder="http://192.168.1.23:8765">
+        </label>
       </div>
-      <footer class="account-actions">
-        <button id="signInButton" class="primary-button" type="submit">Sign In</button>
-        <button id="createAccountButton" type="button">Create Account</button>
-        <button id="signOutButton" class="ghost-button" type="button" hidden>Sign Out</button>
+      <footer class="settings-actions">
+        <button id="saveHomeServerButton" class="primary-button" type="submit">Save</button>
+        <button id="clearHomeServerButton" type="button">Clear</button>
       </footer>
     </form>
   </dialog>

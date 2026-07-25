@@ -1,50 +1,55 @@
 # Book Reader Web
 
-This is the GitHub Pages version of Book Reader.
+This is the iPhone-friendly web reader for `.abrbook` packages.
 
-## Publish
+## How It Works
 
-Create a public GitHub repository that contains the files in this `web-reader` folder at the repository root, then push to `main`.
+- `Saved Books` are stored inside the browser on the iPhone and work away from home.
+- `Home Library` is served by your PC while the phone is on the same Wi-Fi.
+- There is no login, account, or cloud storage in this version.
+- Do not publish private `.abrbook` files to GitHub.
 
-GitHub Actions will publish the site to GitHub Pages. Open the Pages URL on iPhone, tap Share, then Add to Home Screen.
+## Publish The App
 
-Do not upload private `.abrbook` files to GitHub. Use the cloud sync setup below for account-based private storage.
-
-## Cloud books
-
-The web app supports simple account login and synced books through Supabase. A signed-in user can import an `.abrbook` on the PC, upload it to the private cloud account, then sign in on iPhone with the same login name and 4-digit PIN and tap `Save` to store the book locally for offline reading.
-
-Setup:
-
-1. Create a free Supabase project.
-2. In Supabase Auth settings, turn off email confirmation. The reader uses login names, not real email inboxes.
-3. In Supabase SQL Editor, run `supabase-schema.sql`.
-4. In Supabase Project Settings, copy the Project URL and anon public key.
-5. From the main project folder, run:
+The GitHub Pages site should host the reader app shell, not your private book files.
 
 ```powershell
-.\scripts\configure-web-reader-cloud.ps1 -SupabaseUrl "https://YOUR-PROJECT.supabase.co" -SupabaseAnonKey "YOUR-ANON-KEY"
+cd "C:\Users\vlady\Documents\Book Reader"
 .\scripts\publish-web-reader-to-github.ps1
 ```
 
-6. Open the app on PC, create an account with a login name and 4-digit PIN, then import `.abrbook` files.
-7. Open the app on iPhone with the same login name and PIN, tap `Refresh`, then tap `Save` beside a cloud book.
+Open the Pages URL on iPhone, tap Share, then Add to Home Screen.
 
-`Stay logged in` keeps the account session on that device. If it is unchecked during sign-in, the session stays for the browser session only. A 4-digit PIN is convenient for a personal project, but it is not strong security.
+## Add Books To Home Library
 
-## Public hosted books
-
-Optional hosted books live in `books/` and are listed in `books/library.json`. Anything placed there is public through GitHub Pages.
-
-Use the main project scripts:
+On the PC:
 
 ```powershell
+cd "C:\Users\vlady\Documents\Book Reader"
 .\scripts\add-web-reader-book.ps1 -Book ".\exports\your-book.abrbook"
-.\scripts\publish-web-reader-to-github.ps1
+.\scripts\start-home-library.ps1
 ```
 
-Then tap `Refresh` in the iPhone web app and `Save` the online book to local phone storage.
+The server prints one or more iPhone URLs like:
 
-## Reader features
+```text
+http://192.168.1.25:8765
+```
 
-The phone reader uses the same `.abrbook` package data as the PC reader. Imported or saved books support page text, audio playback, seeking, bookmarks, image show/hide, reader font choice, sentence highlighting, speaker color highlights with a legend, and tap-word definitions. In the definition panel, use `Move Audio Here` to jump narration to that word.
+On the iPhone, open the installed Book Reader, tap `Home PC`, enter that URL, then tap `Refresh`. Tap `Save` beside a Home Library book. After saving, it appears under `Saved Books` and works offline.
+
+If the GitHub app cannot fetch the PC URL because of iOS browser limits, open the printed `http://...` URL directly on the iPhone while home and use the same `Save` button there. Private books still stay off GitHub.
+
+## Remove Books
+
+Remove a book from the PC Home Library:
+
+```powershell
+.\scripts\add-web-reader-book.ps1 -Book ".\exports\your-book.abrbook" -Remove
+```
+
+On the iPhone, `Delete` removes only the saved local copy from that phone.
+
+## Reader Features
+
+Saved books support page text, audio playback, seeking, bookmarks, image show/hide, reader font choice, sentence highlighting, speaker color highlights with a legend, and tap-word definitions. In the definition panel, use `Move Audio Here` to jump narration to that word.

@@ -1,10 +1,9 @@
-const CACHE_NAME = "book-reader-web-v8";
+const CACHE_NAME = "book-reader-web-v9";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
-  "./cloud-config.js",
   "./zip-reader.js",
   "./manifest.webmanifest",
   "./icon.svg"

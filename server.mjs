@@ -19,6 +19,19 @@ const contentTypes = new Map([
 ]);
 
 const server = http.createServer((request, response) => {
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Private-Network": "true"
+  };
+
+  if (request.method === "OPTIONS") {
+    response.writeHead(204, corsHeaders);
+    response.end();
+    return;
+  }
+
   const url = new URL(request.url || "/", `http://${request.headers.host}`);
   const relative = normalize(decodeURIComponent(url.pathname)).replace(/^(\.\.[/\\])+/, "");
   let filePath = resolve(join(root, relative === "/" ? "index.html" : relative));
@@ -41,6 +54,7 @@ const server = http.createServer((request, response) => {
   }
 
   response.writeHead(200, {
+    ...corsHeaders,
     "Content-Type": contentTypes.get(extname(filePath).toLowerCase()) || "application/octet-stream",
     "Cache-Control": "no-store"
   });
