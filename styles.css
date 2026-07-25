@@ -369,6 +369,10 @@ dialog h2 {
   font-family: Verdana, Geneva, sans-serif;
 }
 
+.text-view[data-reader-font="comic"] {
+  font-family: "Comic Sans MS", "Comic Sans", "Comic Neue", cursive;
+}
+
 .text-view h1,
 .text-view h2,
 .text-view p {

@@ -1081,7 +1081,7 @@ function applyReaderFont(font) {
 }
 
 function normalizeReaderFont(font) {
-  return ["serif", "system", "georgia", "palatino", "verdana"].includes(font) ? font : "serif";
+  return ["serif", "system", "georgia", "palatino", "verdana", "comic"].includes(font) ? font : "serif";
 }
 
 function readLocalJson(key, fallback) {
