@@ -282,11 +282,27 @@ dialog h2 {
 
 .page-meta {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   color: var(--muted);
   font-size: 13px;
   margin-bottom: 16px;
+}
+
+.page-meta span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reader-mode-toggle {
+  min-width: 36px;
+  min-height: 32px;
+  padding: 4px 8px;
+  font-size: 17px;
+  line-height: 1;
 }
 
 .page-image {
@@ -432,7 +448,7 @@ dialog h2 {
 
 .player-bar {
   display: grid;
-  grid-template-columns: auto auto minmax(160px, 1fr) auto;
+  grid-template-columns: auto auto auto minmax(160px, 1fr) auto;
   gap: 10px;
   align-items: center;
   width: 100%;
@@ -702,8 +718,19 @@ dialog header {
   }
 
   .page-meta {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto 32px;
+    align-items: center;
+    gap: 6px;
     margin-bottom: 8px;
     font-size: 11px;
+  }
+
+  .reader-mode-toggle {
+    min-width: 32px;
+    min-height: 28px;
+    padding: 2px 6px;
+    font-size: 15px;
   }
 
   .page-image {
@@ -726,10 +753,10 @@ dialog header {
   }
 
   .player-bar {
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: 34px auto minmax(0, 1fr) auto;
     grid-template-areas:
-      "pages progress bookmarks"
-      "play play play";
+      "mode pages progress bookmarks"
+      "play play play play";
     gap: 4px 6px;
     padding: 5px 8px calc(5px + env(safe-area-inset-bottom));
     box-shadow: none;
@@ -782,8 +809,16 @@ dialog header {
 
   .bookmark-actions {
     grid-area: bookmarks;
-    grid-template-columns: 32px 36px 32px;
+    grid-template-columns: 32px 36px;
     gap: 5px;
+  }
+
+  .reader-mode-toggle {
+    grid-area: mode;
+    min-width: 32px;
+    min-height: 32px;
+    padding: 4px 6px;
+    font-size: 14px;
   }
 
   .playback-actions {
@@ -901,6 +936,10 @@ dialog header {
     display: none;
   }
 
+  body.reader-mode .reader-mode-toggle {
+    display: none;
+  }
+
   body.reader-mode .text-view {
     font-size: 20px;
     line-height: 1.6;
@@ -946,4 +985,102 @@ dialog header {
   body.reader-mode .progress-row span {
     display: none;
   }
+}
+
+body.reader-mode {
+  overflow: hidden;
+}
+
+body.reader-mode .app-shell {
+  display: block;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+body.reader-mode .topbar,
+body.reader-mode .library-panel,
+body.reader-mode .page-actions .toggle-row,
+body.reader-mode .page-actions .select-row,
+body.reader-mode .playback-actions #rewindButton,
+body.reader-mode .playback-actions #forwardButton,
+body.reader-mode .bookmark-actions,
+body.reader-mode .page-meta,
+body.reader-mode .speaker-panel,
+body.reader-mode .reader-mode-toggle {
+  display: none;
+}
+
+body.reader-mode .reader-layout {
+  display: block;
+  height: 100dvh;
+  padding: 0;
+}
+
+body.reader-mode .reader-panel {
+  height: 100dvh;
+  border-width: 0;
+  box-shadow: none;
+}
+
+body.reader-mode .page-view {
+  height: 100dvh;
+  padding: calc(6px + env(safe-area-inset-top)) 12px calc(48px + env(safe-area-inset-bottom));
+  overflow: auto;
+}
+
+body.reader-mode .page-image {
+  max-height: 22vh;
+  margin-bottom: 8px;
+}
+
+body.reader-mode .text-view {
+  font-size: 20px;
+  line-height: 1.6;
+}
+
+body.reader-mode .player-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: 34px 34px minmax(44px, 52px) 34px minmax(0, 1fr);
+  grid-template-areas: "exit prev play next progress";
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px calc(5px + env(safe-area-inset-bottom));
+  border-width: 1px 0 0;
+  box-shadow: none;
+}
+
+body.reader-mode .mode-exit-button {
+  grid-area: exit;
+  display: block;
+}
+
+body.reader-mode .page-actions,
+body.reader-mode .playback-actions {
+  display: contents;
+}
+
+body.reader-mode #previousPageButton {
+  grid-area: prev;
+}
+
+body.reader-mode #nextPageButton {
+  grid-area: next;
+}
+
+body.reader-mode #playPauseButton {
+  grid-area: play;
+  min-height: 34px;
+}
+
+body.reader-mode .progress-row {
+  grid-area: progress;
+}
+
+body.reader-mode .progress-row span {
+  display: none;
 }
