@@ -81,8 +81,8 @@ const els = {
   accountForm: document.getElementById("accountForm"),
   accountTitle: document.getElementById("accountTitle"),
   accountMessage: document.getElementById("accountMessage"),
-  accountEmail: document.getElementById("accountEmail"),
-  accountPassword: document.getElementById("accountPassword"),
+  accountLoginName: document.getElementById("accountLoginName"),
+  accountPin: document.getElementById("accountPin"),
   accountCloseButton: document.getElementById("accountCloseButton"),
   stayLoggedInToggle: document.getElementById("stayLoggedInToggle"),
   signInButton: document.getElementById("signInButton"),
@@ -203,7 +203,7 @@ async function initializeCloud() {
     const { data, error } = await state.cloudClient.auth.getSession();
     if (error) throw error;
     state.cloudUser = data.session?.user || null;
-    state.cloudStatus = state.cloudUser ? `Signed in as ${state.cloudUser.email}.` : "Sign in to sync books.";
+    state.cloudStatus = state.cloudUser ? `Signed in as ${loginNameForUser(state.cloudUser)}.` : "Sign in to sync books.";
   } catch (error) {
     console.warn(error);
     state.cloudStatus = "Cloud sync could not start.";
@@ -228,7 +228,7 @@ async function ensureCloudClient() {
   state.cloudReady = true;
   state.cloudAuthSubscription = state.cloudClient.auth.onAuthStateChange((_event, session) => {
     state.cloudUser = session?.user || null;
-    state.cloudStatus = state.cloudUser ? `Signed in as ${state.cloudUser.email}.` : "Signed out.";
+    state.cloudStatus = state.cloudUser ? `Signed in as ${loginNameForUser(state.cloudUser)}.` : "Signed out.";
     renderAccountState();
     refreshCatalog();
   });
@@ -243,6 +243,41 @@ function loadCloudStayPreference() {
   return localStorage.getItem(CLOUD_STAY_KEY) !== "false";
 }
 
+function normalizeLoginName(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function loginEmailForName(loginName) {
+  return `${loginName}@book-reader.local`;
+}
+
+function authPasswordForPin(pin) {
+  return `reader-pin-${pin}`;
+}
+
+function loginNameForUser(user) {
+  const metadataName = normalizeLoginName(user?.user_metadata?.login_name);
+  if (metadataName) return metadataName;
+  return normalizeLoginName(String(user?.email || "").split("@")[0]);
+}
+
+function readAccountInputs() {
+  const loginName = normalizeLoginName(els.accountLoginName.value);
+  const pin = String(els.accountPin.value || "").trim();
+  els.accountLoginName.value = loginName;
+  if (loginName.length < 3) {
+    throw new Error("Use at least 3 letters or numbers for the login name.");
+  }
+  if (!/^\d{4}$/.test(pin)) {
+    throw new Error("PIN must be exactly 4 numbers.");
+  }
+  return { loginName, pin };
+}
+
 function saveCloudStayPreference() {
   localStorage.setItem(CLOUD_STAY_KEY, els.stayLoggedInToggle.checked ? "true" : "false");
 }
@@ -254,7 +289,7 @@ function showAccountDialog() {
   } else {
     els.accountDialog.open = true;
   }
-  setTimeout(() => els.accountEmail.focus(), 50);
+  setTimeout(() => els.accountLoginName.focus(), 50);
 }
 
 async function onAccountSignIn(event) {
@@ -266,13 +301,14 @@ async function onAccountSignIn(event) {
   }
 
   try {
+    const { loginName, pin } = readAccountInputs();
     await ensureCloudClient();
     const { error } = await state.cloudClient.auth.signInWithPassword({
-      email: els.accountEmail.value.trim(),
-      password: els.accountPassword.value
+      email: loginEmailForName(loginName),
+      password: authPasswordForPin(pin)
     });
     if (error) throw error;
-    els.accountPassword.value = "";
+    els.accountPin.value = "";
     els.accountDialog.close();
     await refreshCatalog();
     setStatus("Signed in. Cloud books refreshed.");
@@ -290,14 +326,20 @@ async function createAccount() {
   }
 
   try {
+    const { loginName, pin } = readAccountInputs();
     await ensureCloudClient();
     const { error } = await state.cloudClient.auth.signUp({
-      email: els.accountEmail.value.trim(),
-      password: els.accountPassword.value
+      email: loginEmailForName(loginName),
+      password: authPasswordForPin(pin),
+      options: {
+        data: {
+          login_name: loginName
+        }
+      }
     });
     if (error) throw error;
-    els.accountPassword.value = "";
-    setAccountMessage("Account created. Check your email if confirmation is enabled, then sign in.");
+    els.accountPin.value = "";
+    setAccountMessage("Account created. Sign in with the same login name and PIN.");
   } catch (error) {
     console.error(error);
     setAccountMessage(error.message || "Account creation failed.");
@@ -316,19 +358,20 @@ async function signOut() {
 
 function renderAccountState() {
   const signedIn = Boolean(state.cloudUser);
-  els.accountButton.textContent = signedIn ? state.cloudUser.email : "Sign In";
+  const loginName = signedIn ? loginNameForUser(state.cloudUser) : "";
+  els.accountButton.textContent = signedIn ? loginName : "Sign In";
   els.accountTitle.textContent = signedIn ? "Account" : "Sign In";
   els.accountMessage.textContent = state.cloudStatus || (cloudConfigured()
-    ? "Use the same account on PC and iPhone."
+    ? "Use the same login name and PIN on PC and iPhone."
     : "Cloud sync needs Supabase config first.");
-  els.accountEmail.disabled = signedIn;
-  els.accountPassword.disabled = signedIn;
+  els.accountLoginName.disabled = signedIn;
+  els.accountPin.disabled = signedIn;
   els.signInButton.hidden = signedIn;
   els.createAccountButton.hidden = signedIn;
   els.signOutButton.hidden = !signedIn;
   if (signedIn) {
-    els.accountEmail.value = state.cloudUser.email || "";
-    els.accountPassword.value = "";
+    els.accountLoginName.value = loginName;
+    els.accountPin.value = "";
   }
 }
 

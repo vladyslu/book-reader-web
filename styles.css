@@ -83,7 +83,7 @@ button:disabled {
   opacity: 0;
 }
 
-input[type="email"],
+input[type="text"],
 input[type="password"],
 select {
   width: 100%;

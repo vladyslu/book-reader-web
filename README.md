@@ -12,24 +12,25 @@ Do not upload private `.abrbook` files to GitHub. Use the cloud sync setup below
 
 ## Cloud books
 
-The web app supports real account login and synced books through Supabase. A signed-in user can import an `.abrbook` on the PC, upload it to the private cloud account, then sign in on iPhone and tap `Save` to store the book locally for offline reading.
+The web app supports simple account login and synced books through Supabase. A signed-in user can import an `.abrbook` on the PC, upload it to the private cloud account, then sign in on iPhone with the same login name and 4-digit PIN and tap `Save` to store the book locally for offline reading.
 
 Setup:
 
 1. Create a free Supabase project.
-2. In Supabase SQL Editor, run `supabase-schema.sql`.
-3. In Supabase Project Settings, copy the Project URL and anon public key.
-4. From the main project folder, run:
+2. In Supabase Auth settings, turn off email confirmation. The reader uses login names, not real email inboxes.
+3. In Supabase SQL Editor, run `supabase-schema.sql`.
+4. In Supabase Project Settings, copy the Project URL and anon public key.
+5. From the main project folder, run:
 
 ```powershell
 .\scripts\configure-web-reader-cloud.ps1 -SupabaseUrl "https://YOUR-PROJECT.supabase.co" -SupabaseAnonKey "YOUR-ANON-KEY"
 .\scripts\publish-web-reader-to-github.ps1
 ```
 
-5. Open the app on PC, sign in or create an account, then import `.abrbook` files.
-6. Open the app on iPhone with the same account, tap `Refresh`, then tap `Save` beside a cloud book.
+6. Open the app on PC, create an account with a login name and 4-digit PIN, then import `.abrbook` files.
+7. Open the app on iPhone with the same login name and PIN, tap `Refresh`, then tap `Save` beside a cloud book.
 
-`Stay logged in` keeps the account session on that device. If it is unchecked during sign-in, the session stays for the browser session only.
+`Stay logged in` keeps the account session on that device. If it is unchecked during sign-in, the session stays for the browser session only. A 4-digit PIN is convenient for a personal project, but it is not strong security.
 
 ## Public hosted books
 
