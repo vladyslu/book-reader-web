@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f7f4ed">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Book Reader">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>Book Reader</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <h1>Book Reader</h1>
+        <p id="statusText">Ready</p>
+      </div>
+      <label class="import-button">
+        <span>Import</span>
+        <input id="packageInput" type="file" accept=".abrbook,application/zip,application/x-zip-compressed">
+      </label>
+    </header>
+
+    <main class="reader-layout">
+      <aside class="library-panel" aria-label="Library">
+        <div class="panel-heading">
+          <h2>Library</h2>
+          <button id="deleteBookButton" class="ghost-button" type="button" disabled>Delete</button>
+        </div>
+        <div id="libraryList" class="library-list"></div>
+      </aside>
+
+      <section class="reader-panel" aria-label="Reader">
+        <div id="emptyState" class="empty-state">
+          <img src="icon.svg" alt="">
+          <p>Import an .abrbook package.</p>
+        </div>
+
+        <article id="pageView" class="page-view" hidden>
+          <div class="page-meta">
+            <span id="bookTitle"></span>
+            <span id="pageLabel"></span>
+          </div>
+          <img id="pageImage" class="page-image" alt="">
+          <section id="textView" class="text-view"></section>
+        </article>
+      </section>
+    </main>
+
+    <footer class="player-bar">
+      <div class="page-actions">
+        <button id="previousPageButton" type="button">Prev</button>
+        <button id="nextPageButton" type="button">Next</button>
+        <label class="toggle-row">
+          <input id="showImagesToggle" type="checkbox" checked>
+          <span>Images</span>
+        </label>
+      </div>
+
+      <div class="playback-actions">
+        <button id="rewindButton" type="button">-15s</button>
+        <button id="playPauseButton" class="primary-button" type="button">Play</button>
+        <button id="forwardButton" type="button">+15s</button>
+      </div>
+
+      <div class="progress-row">
+        <span id="elapsedLabel">0:00</span>
+        <input id="progressSlider" type="range" min="0" max="1" value="0" step="0.1">
+        <span id="durationLabel">0:00</span>
+      </div>
+
+      <div class="bookmark-actions">
+        <button id="bookmarkButton" type="button">Bookmark</button>
+        <button id="bookmarksButton" type="button">Bookmarks</button>
+      </div>
+    </footer>
+  </div>
+
+  <audio id="audioPlayer" preload="metadata"></audio>
+  <dialog id="bookmarkDialog">
+    <form method="dialog">
+      <header>
+        <h2>Bookmarks</h2>
+        <button value="cancel" class="icon-button" aria-label="Close">x</button>
+      </header>
+      <div id="bookmarkList" class="bookmark-list"></div>
+    </form>
+  </dialog>
+  <script src="app.js" type="module"></script>
+</body>
+</html>
